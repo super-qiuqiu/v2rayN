@@ -1,0 +1,38 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # GitHub Actions cron uses UTC. This runs every 6 hours.
+    - cron: '0 0,6,12,18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'super-qiuqiu/v2rayN'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout fork
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: '0'
+        ref: master
+
+    - name: Sync master from upstream
+      run: |
+        set -euo pipefail
+
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        git remote add upstream https://github.com/2dust/v2rayN.git
+        git fetch upstream master
+        git checkout -B master origin/master
+        git merge --no-edit upstream/master
+        git push origin master
