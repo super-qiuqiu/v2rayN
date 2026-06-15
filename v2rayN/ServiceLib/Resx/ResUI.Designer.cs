@@ -1015,11 +1015,29 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
+        ///   查找类似 Exit and keep core running 的本地化字符串。
+        /// </summary>
+        public static string menuExitKeepCore {
+            get {
+                return ResourceManager.GetString("menuExitKeepCore", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Are you sure you want to exit? 的本地化字符串。
         /// </summary>
         public static string menuExitTips {
             get {
                 return ResourceManager.GetString("menuExitTips", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Exit v2rayN and keep the proxy core running? 的本地化字符串。
+        /// </summary>
+        public static string menuExitKeepCoreTips {
+            get {
+                return ResourceManager.GetString("menuExitKeepCoreTips", resourceCulture);
             }
         }
         

@@ -27,6 +27,7 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
         menuCheckUpdate.Click += MenuCheckUpdate_Click;
         btnNewUpdate.Click += MenuCheckUpdate_Click;
         menuBackupAndRestore.Click += MenuBackupAndRestore_Click;
+        menuExitKeepCore.Click += MenuExitKeepCore_Click;
         menuClose.Click += MenuClose_Click;
 
         ViewModel = new MainWindowViewModel(UpdateViewHandler);
@@ -286,7 +287,7 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
                 break;
 
             case WindowCloseReason.ApplicationShutdown or WindowCloseReason.OSShutdown:
-                await AppManager.Instance.AppExitAsync(false);
+                await AppManager.Instance.AppExitAsync(false, keepCore: false);
                 break;
         }
 
@@ -390,6 +391,23 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
         StorageUI();
 
         await AppManager.Instance.AppExitAsync(true);
+    }
+
+    private async void MenuExitKeepCore_Click(object? sender, RoutedEventArgs e)
+    {
+        if (await UI.ShowYesNo(this, ResUI.menuExitKeepCoreTips) != ButtonResult.Yes)
+        {
+            return;
+        }
+
+        _blCloseByUser = true;
+        StorageUI();
+
+        if (!await AppManager.Instance.AppExitAsync(true, keepCore: true))
+        {
+            _blCloseByUser = false;
+            NoticeManager.Instance.Enqueue(ResUI.OperationFailed);
+        }
     }
 
     private void Shutdown(bool obj)

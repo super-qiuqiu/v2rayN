@@ -12,9 +12,16 @@ public class CoreManager
     private WindowsJobService? _processJob;
     private ProcessService? _processService;
     private ProcessService? _processPreService;
+    private CoreInfo? _processCoreInfo;
+    private string? _processConfigPath;
+    private CoreInfo? _processPreCoreInfo;
+    private string? _processPreConfigPath;
     private bool _linuxSudo = false;
     private Func<bool, string, Task>? _updateFunc;
     private const string _tag = "CoreHandler";
+
+    public bool HasRunningCore => _processService is { HasExited: false } || _processPreService is { HasExited: false };
+    public bool HasDetachedCore => File.Exists(GetDetachedCoreStatePath());
 
     public async Task Init(Config config, Func<bool, string, Task> updateFunc)
     {
@@ -145,6 +152,8 @@ public class CoreManager
     {
         try
         {
+            await StopDetachedCores();
+
             if (_linuxSudo)
             {
                 await CoreAdminManager.Instance.KillProcessAsLinuxSudo();
@@ -164,10 +173,84 @@ public class CoreManager
                 _processPreService.Dispose();
                 _processPreService = null;
             }
+
+            ClearProcessMetadata();
         }
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
+        }
+    }
+
+    public async Task<bool> DetachCoreForAppExit()
+    {
+        try
+        {
+            var hasMainProcess = _processService is { HasExited: false } && _processCoreInfo != null && _processConfigPath.IsNotEmpty();
+            var hasPreProcess = _processPreService is { HasExited: false } && _processPreCoreInfo != null && _processPreConfigPath.IsNotEmpty();
+
+            if (!hasMainProcess && !hasPreProcess)
+            {
+                return true;
+            }
+
+            var mainCoreInfo = _processCoreInfo;
+            var mainConfigPath = _processConfigPath;
+            var preCoreInfo = _processPreCoreInfo;
+            var preConfigPath = _processPreConfigPath;
+
+            if (_linuxSudo)
+            {
+                await CoreAdminManager.Instance.KillProcessAsLinuxSudo();
+                _linuxSudo = false;
+                _processService?.Dispose();
+            }
+            else
+            {
+                await StopProcessOnly(_processService);
+            }
+
+            await StopProcessOnly(_processPreService);
+            _processService = null;
+            _processPreService = null;
+
+            ProcessService? mainProcess = null;
+            ProcessService? preProcess = null;
+            List<DetachedCoreProcess> detachedProcesses = [];
+
+            if (hasMainProcess)
+            {
+                mainProcess = await RunProcess(mainCoreInfo, mainConfigPath!, false, true, false);
+                if (mainProcess is null)
+                {
+                    return false;
+                }
+                detachedProcesses.Add(CreateDetachedCoreProcess(mainProcess));
+            }
+
+            if (hasPreProcess)
+            {
+                preProcess = await RunProcess(preCoreInfo, preConfigPath!, false, true, false);
+                if (preProcess is null)
+                {
+                    await StopProcessOnly(mainProcess);
+                    return false;
+                }
+                detachedProcesses.Add(CreateDetachedCoreProcess(preProcess));
+            }
+
+            SaveDetachedCoreState(detachedProcesses);
+            mainProcess?.Detach();
+            preProcess?.Detach();
+            _linuxSudo = false;
+            ClearProcessMetadata();
+            Logging.SaveLog("Core process detached for GUI exit");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return false;
         }
     }
 
@@ -186,6 +269,8 @@ public class CoreManager
             return;
         }
         _processService = proc;
+        _processCoreInfo = coreInfo;
+        _processConfigPath = Global.CoreConfigFileName;
     }
 
     private async Task CoreStartPreService(CoreConfigContext? preContext)
@@ -204,8 +289,130 @@ public class CoreManager
                     return;
                 }
                 _processPreService = proc;
+                _processPreCoreInfo = coreInfo;
+                _processPreConfigPath = Global.CorePreConfigFileName;
             }
         }
+    }
+
+    private static async Task StopProcessOnly(ProcessService? processService)
+    {
+        if (processService is null)
+        {
+            return;
+        }
+
+        await processService.StopAsync();
+        processService.Dispose();
+    }
+
+    private async Task StopDetachedCores()
+    {
+        var statePath = GetDetachedCoreStatePath();
+        if (!File.Exists(statePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var state = JsonUtils.Deserialize<DetachedCoreState>(await File.ReadAllTextAsync(statePath));
+            foreach (var processState in state?.Processes ?? [])
+            {
+                KillDetachedProcess(processState);
+            }
+
+            foreach (var pid in state?.Pids?.Distinct() ?? [])
+            {
+                KillDetachedProcess(new DetachedCoreProcess { Pid = pid });
+            }
+
+            await Task.Delay(100);
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(statePath);
+            }
+            catch { }
+        }
+    }
+
+    private static void KillDetachedProcess(DetachedCoreProcess processState)
+    {
+        var pid = processState.Pid;
+        if (pid <= 0 || pid == Environment.ProcessId)
+        {
+            return;
+        }
+
+        try
+        {
+            var process = Process.GetProcessById(pid);
+            if (processState.ProcessName.IsNotEmpty()
+                && !process.ProcessName.Equals(processState.ProcessName, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+            }
+        }
+        catch { }
+    }
+
+    private static void SaveDetachedCoreState(List<DetachedCoreProcess> processes)
+    {
+        var statePath = GetDetachedCoreStatePath();
+        var state = new DetachedCoreState
+        {
+            Processes = processes
+                .Where(process => process.Pid > 0)
+                .GroupBy(process => process.Pid)
+                .Select(group => group.First())
+                .ToList()
+        };
+
+        if (state.Processes.Count == 0)
+        {
+            try
+            {
+                File.Delete(statePath);
+            }
+            catch { }
+            return;
+        }
+
+        File.WriteAllText(statePath, JsonUtils.Serialize(state, false));
+    }
+
+    private static DetachedCoreProcess CreateDetachedCoreProcess(ProcessService processService)
+    {
+        return new DetachedCoreProcess
+        {
+            Pid = processService.Id,
+            ProcessName = processService.ProcessName
+        };
+    }
+
+    private static string GetDetachedCoreStatePath()
+    {
+        return Utils.GetBinConfigPath(Global.DetachedCoreStateFileName);
+    }
+
+    private void ClearProcessMetadata()
+    {
+        _processCoreInfo = null;
+        _processConfigPath = null;
+        _processPreCoreInfo = null;
+        _processPreConfigPath = null;
     }
 
     private async Task UpdateFunc(bool notify, string msg)
@@ -217,7 +424,7 @@ public class CoreManager
 
     #region Process
 
-    private async Task<ProcessService?> RunProcess(CoreInfo? coreInfo, string configPath, bool displayLog, bool mayNeedSudo)
+    private async Task<ProcessService?> RunProcess(CoreInfo? coreInfo, string configPath, bool displayLog, bool mayNeedSudo, bool attachToAppJob = true)
     {
         var fileName = CoreInfoManager.Instance.GetCoreExecFile(coreInfo, out var msg);
         if (fileName.IsNullOrEmpty())
@@ -235,10 +442,10 @@ public class CoreManager
             {
                 _linuxSudo = true;
                 await CoreAdminManager.Instance.Init(_config, _updateFunc);
-                return await CoreAdminManager.Instance.RunProcessAsLinuxSudo(fileName, coreInfo, configPath);
+                return await CoreAdminManager.Instance.RunProcessAsLinuxSudo(fileName, coreInfo, configPath, displayLog);
             }
 
-            return await RunProcessNormal(fileName, coreInfo, configPath, displayLog);
+            return await RunProcessNormal(fileName, coreInfo, configPath, displayLog, attachToAppJob);
         }
         catch (Exception ex)
         {
@@ -248,7 +455,7 @@ public class CoreManager
         }
     }
 
-    private async Task<ProcessService?> RunProcessNormal(string fileName, CoreInfo? coreInfo, string configPath, bool displayLog)
+    private async Task<ProcessService?> RunProcessNormal(string fileName, CoreInfo? coreInfo, string configPath, bool displayLog, bool attachToAppJob)
     {
         var environmentVars = new Dictionary<string, string>();
         foreach (var kv in coreInfo.Environment)
@@ -274,7 +481,11 @@ public class CoreManager
         {
             throw new Exception(ResUI.FailedToRunCore);
         }
-        AddProcessJob(procService.Handle);
+
+        if (attachToAppJob)
+        {
+            AddProcessJob(procService.Handle);
+        }
 
         return procService;
     }
@@ -293,4 +504,16 @@ public class CoreManager
     }
 
     #endregion Process
+
+    private sealed class DetachedCoreState
+    {
+        public List<DetachedCoreProcess> Processes { get; set; } = [];
+        public List<int> Pids { get; set; } = [];
+    }
+
+    private sealed class DetachedCoreProcess
+    {
+        public int Pid { get; set; }
+        public string? ProcessName { get; set; }
+    }
 }

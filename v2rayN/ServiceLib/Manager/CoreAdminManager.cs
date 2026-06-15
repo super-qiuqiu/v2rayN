@@ -29,7 +29,7 @@ public class CoreAdminManager
         await _updateFunc?.Invoke(notify, msg);
     }
 
-    public async Task<ProcessService?> RunProcessAsLinuxSudo(string fileName, CoreInfo coreInfo, string configPath)
+    public async Task<ProcessService?> RunProcessAsLinuxSudo(string fileName, CoreInfo coreInfo, string configPath, bool displayLog = true)
     {
         StringBuilder sb = new();
         sb.AppendLine("#!/bin/bash");
@@ -41,7 +41,7 @@ public class CoreAdminManager
             fileName: shFilePath,
             arguments: "",
             workingDirectory: Utils.GetBinConfigPath(),
-            displayLog: true,
+            displayLog: displayLog,
             redirectInput: true,
             environmentVars: null,
             updateFunc: _updateFunc

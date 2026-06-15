@@ -408,6 +408,9 @@
   <data name="menuExit" xml:space="preserve">
     <value>退出</value>
   </data>
+  <data name="menuExitKeepCore" xml:space="preserve">
+    <value>退出並保留核心運行</value>
+  </data>
   <data name="menuGlobalHotkeySetting" xml:space="preserve">
     <value>全域快速鍵設定</value>
   </data>
@@ -1301,6 +1304,9 @@
   </data>
   <data name="menuExitTips" xml:space="preserve">
     <value>確定要退出嗎？</value>
+  </data>
+  <data name="menuExitKeepCoreTips" xml:space="preserve">
+    <value>退出 v2rayN 並保留代理核心繼續運行？</value>
   </data>
   <data name="LvMemo" xml:space="preserve">
     <value>備註備忘</value>

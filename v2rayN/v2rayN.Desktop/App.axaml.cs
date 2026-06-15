@@ -142,5 +142,22 @@ public partial class App : Application
         AppManager.Instance.Shutdown(true);
     }
 
+    private async void MenuExitKeepCore_Click(object? sender, EventArgs e)
+    {
+        if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: MainWindow mainWindow }
+            && await UI.ShowYesNo(mainWindow, ResUI.menuExitKeepCoreTips) != ButtonResult.Yes)
+        {
+            return;
+        }
+
+        if (await AppManager.Instance.AppExitAsync(false, keepCore: true))
+        {
+            AppManager.Instance.Shutdown(true);
+            return;
+        }
+
+        NoticeManager.Instance.Enqueue(ResUI.OperationFailed);
+    }
+
     #endregion App Event
 }

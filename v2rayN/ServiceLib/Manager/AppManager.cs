@@ -118,28 +118,61 @@ public sealed class AppManager
         return true;
     }
 
-    public async Task AppExitAsync(bool needShutdown)
+    public async Task<bool> AppExitAsync(bool needShutdown, bool keepCore = false)
     {
+        var canShutdown = false;
+
         try
         {
-            Logging.SaveLog("AppExitAsync Begin");
+            Logging.SaveLog($"AppExitAsync Begin (keepCore: {keepCore})");
 
-            await SysProxyHandler.UpdateSysProxy(_config, true);
+            if (keepCore)
+            {
+                var keepSystemProxy = CoreManager.Instance.HasRunningCore || CoreManager.Instance.HasDetachedCore;
+
+                if (!await CoreManager.Instance.DetachCoreForAppExit())
+                {
+                    Logging.SaveLog("Failed to keep core running during app exit");
+                    return false;
+                }
+
+                await SysProxyHandler.UpdateSysProxy(_config, !keepSystemProxy);
+            }
+            else
+            {
+                await SysProxyHandler.UpdateSysProxy(_config, true);
+            }
+
             AppEvents.AppExitRequested.Publish();
             await Task.Delay(50); //Wait for AppExitRequested to be processed
 
             await ConfigHandler.SaveConfig(_config);
             await ProfileExManager.Instance.SaveTo();
             await StatisticsManager.Instance.SaveTo();
-            await CoreManager.Instance.CoreStop();
+
+            if (!keepCore)
+            {
+                await CoreManager.Instance.CoreStop();
+            }
+            else
+            {
+                Logging.SaveLog("Core process kept running");
+            }
+
             StatisticsManager.Instance.Close();
 
             Logging.SaveLog("AppExitAsync End");
+            canShutdown = true;
+            return true;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Logging.SaveLog("AppExitAsync", ex);
+            return false;
+        }
         finally
         {
-            if (needShutdown)
+            if (needShutdown && canShutdown)
             {
                 Shutdown(false);
             }

@@ -408,6 +408,9 @@
   <data name="menuExit" xml:space="preserve">
     <value>Exit</value>
   </data>
+  <data name="menuExitKeepCore" xml:space="preserve">
+    <value>Exit and keep core running</value>
+  </data>
   <data name="menuGlobalHotkeySetting" xml:space="preserve">
     <value>Global Hotkey Setting</value>
   </data>
@@ -1304,6 +1307,9 @@
   </data>
   <data name="menuExitTips" xml:space="preserve">
     <value>Are you sure you want to exit?</value>
+  </data>
+  <data name="menuExitKeepCoreTips" xml:space="preserve">
+    <value>Exit v2rayN and keep the proxy core running?</value>
   </data>
   <data name="LvMemo" xml:space="preserve">
     <value>Remarks Memo</value>

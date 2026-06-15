@@ -9,6 +9,7 @@ public class ProcessService : IDisposable
     public int Id => _process.Id;
     public IntPtr Handle => _process.Handle;
     public bool HasExited => _process.HasExited;
+    public string ProcessName => _process.ProcessName;
 
     public ProcessService(
         string fileName,
@@ -114,6 +115,41 @@ public class ProcessService : IDisposable
         {
             await _updateFunc?.Invoke(true, ex.Message);
         }
+    }
+
+    public void Detach()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            if (_process.StartInfo.RedirectStandardOutput)
+            {
+                try
+                {
+                    _process.CancelOutputRead();
+                }
+                catch { }
+                try
+                {
+                    _process.CancelErrorRead();
+                }
+                catch { }
+            }
+
+            _process.EnableRaisingEvents = false;
+            _process.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _updateFunc?.Invoke(true, ex.Message);
+        }
+
+        _isDisposed = true;
+        GC.SuppressFinalize(this);
     }
 
     private void RegisterEventHandlers()
