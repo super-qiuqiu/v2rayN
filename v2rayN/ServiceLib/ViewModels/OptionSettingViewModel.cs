@@ -44,6 +44,7 @@ public class OptionSettingViewModel : MyReactiveObject
     #region UI
 
     [Reactive] public bool AutoRun { get; set; }
+    [Reactive] public bool AutoQuitGuiOnStartup { get; set; }
     [Reactive] public bool EnableStatistics { get; set; }
     [Reactive] public bool KeepOlderDedupl { get; set; }
     [Reactive] public bool DisplayRealTimeSpeed { get; set; }
@@ -127,6 +128,10 @@ public class OptionSettingViewModel : MyReactiveObject
         BlIsIsMacOS = Utils.IsMacOS();
         BlIsNonWindows = Utils.IsNonWindows();
 
+        this.WhenAnyValue(x => x.AutoRun)
+            .Where(autoRun => !autoRun)
+            .Subscribe(_ => AutoQuitGuiOnStartup = false);
+
         SaveCmd = ReactiveCommand.CreateFromTask(async () =>
         {
             await SaveSettingAsync();
@@ -181,6 +186,7 @@ public class OptionSettingViewModel : MyReactiveObject
         #region UI
 
         AutoRun = _config.GuiItem.AutoRun;
+        AutoQuitGuiOnStartup = AutoRun && _config.GuiItem.AutoQuitGuiOnStartup;
         EnableStatistics = _config.GuiItem.EnableStatistics;
         DisplayRealTimeSpeed = _config.GuiItem.DisplayRealTimeSpeed;
         KeepOlderDedupl = _config.GuiItem.KeepOlderDedupl;
@@ -353,6 +359,7 @@ public class OptionSettingViewModel : MyReactiveObject
         _config.CoreBasicItem.EnableFinalFragment = EnableFinalFragment;
 
         _config.GuiItem.AutoRun = AutoRun;
+        _config.GuiItem.AutoQuitGuiOnStartup = AutoRun && AutoQuitGuiOnStartup;
         _config.GuiItem.EnableStatistics = EnableStatistics;
         _config.GuiItem.DisplayRealTimeSpeed = DisplayRealTimeSpeed;
         _config.GuiItem.KeepOlderDedupl = KeepOlderDedupl;

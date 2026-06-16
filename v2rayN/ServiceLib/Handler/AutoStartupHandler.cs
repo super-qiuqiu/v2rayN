@@ -23,7 +23,7 @@ public static class AutoStartupHandler
 
             if (config.GuiItem.AutoRun)
             {
-                await SetTaskLinux();
+                await SetTaskLinux(config);
             }
         }
         else if (Utils.IsMacOS())
@@ -32,7 +32,7 @@ public static class AutoStartupHandler
 
             if (config.GuiItem.AutoRun)
             {
-                await SetTaskOSX();
+                await SetTaskOSX(config);
             }
         }
 
@@ -143,14 +143,17 @@ public static class AutoStartupHandler
     }
 
     [SupportedOSPlatform("linux")]
-    private static async Task SetTaskLinux()
+    private static async Task SetTaskLinux(Config config)
     {
         try
         {
             var linuxConfig = EmbedUtils.GetEmbedText(Global.LinuxAutostartConfig);
             if (linuxConfig.IsNotEmpty())
             {
-                linuxConfig = linuxConfig.Replace("$ExecPath$", Utils.GetExePath());
+                var autoQuitGuiArg = config.GuiItem.AutoQuitGuiOnStartup ? $" --{Global.AutoQuitGui}" : string.Empty;
+                linuxConfig = linuxConfig
+                    .Replace("$ExecPath$", EscapeDesktopExecArg(Utils.GetExePath()))
+                    .Replace("$AutoQuitGuiArg$", autoQuitGuiArg);
                 Logging.SaveLog(linuxConfig);
 
                 var homePath = GetHomePathLinux();
@@ -169,6 +172,11 @@ public static class AutoStartupHandler
         var homePath = Path.Combine(Utils.GetHomePath(), ".config", "autostart", $"{Global.AppName}.desktop");
         Directory.CreateDirectory(Path.GetDirectoryName(homePath));
         return homePath;
+    }
+
+    private static string EscapeDesktopExecArg(string value)
+    {
+        return $"\"{value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("%", "%%")}\"";
     }
 
     #endregion Linux
@@ -196,11 +204,11 @@ public static class AutoStartupHandler
     }
 
     [SupportedOSPlatform("macos")]
-    private static async Task SetTaskOSX()
+    private static async Task SetTaskOSX(Config config)
     {
         try
         {
-            var plistContent = GenerateLaunchAgentPlist();
+            var plistContent = GenerateLaunchAgentPlist(config);
             var launchAgentPath = GetLaunchAgentPathMacOS();
             await File.WriteAllTextAsync(launchAgentPath, plistContent);
 
@@ -223,10 +231,13 @@ public static class AutoStartupHandler
     }
 
     [SupportedOSPlatform("macos")]
-    private static string GenerateLaunchAgentPlist()
+    private static string GenerateLaunchAgentPlist(Config config)
     {
         var exePath = Utils.GetExePath();
         var appName = Path.GetFileNameWithoutExtension(exePath);
+        var autoQuitGuiArg = config.GuiItem.AutoQuitGuiOnStartup ? $" --{Global.AutoQuitGui}" : string.Empty;
+        var command = $"if ! pgrep -x \"{EscapeShellDoubleQuoted(appName)}\" > /dev/null; then \"{EscapeShellDoubleQuoted(exePath)}\"{autoQuitGuiArg}; fi";
+
         return $@"<?xml version=""1.0"" encoding=""UTF-8""?>
 <!DOCTYPE plist PUBLIC ""-//Apple//DTD PLIST 1.0//EN"" ""http://www.apple.com/DTDs/PropertyList-1.0.dtd"">
 <plist version=""1.0"">
@@ -237,7 +248,7 @@ public static class AutoStartupHandler
     <array>
         <string>/bin/sh</string>
         <string>-c</string>
-        <string>if ! pgrep -x ""{appName}"" > /dev/null; then ""{exePath}""; fi</string>
+        <string>{EscapeXml(command)}</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -245,6 +256,20 @@ public static class AutoStartupHandler
     <false/>
 </dict>
 </plist>";
+    }
+
+    private static string EscapeShellDoubleQuoted(string value)
+    {
+        return value
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("$", "\\$")
+            .Replace("`", "\\`");
+    }
+
+    private static string EscapeXml(string value)
+    {
+        return System.Security.SecurityElement.Escape(value) ?? string.Empty;
     }
 
     #endregion macOS

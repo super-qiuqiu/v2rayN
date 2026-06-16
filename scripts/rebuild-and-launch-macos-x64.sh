@@ -41,6 +41,9 @@ cp -rf *.dll "$APP_NAME.app/Contents/MacOS/" 2>/dev/null || true
 cp -rf *.json "$APP_NAME.app/Contents/MacOS/" 2>/dev/null || true
 cp -rf *.pdb "$APP_NAME.app/Contents/MacOS/" 2>/dev/null || true
 
+# Copy native libraries (.dylib) from parent directory (osx-x64)
+cp -f ../*.dylib "$APP_NAME.app/Contents/MacOS/" 2>/dev/null || true
+
 chmod +x "$APP_NAME.app/Contents/MacOS/v2rayN"
 
 # Copy icon

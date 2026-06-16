@@ -398,36 +398,59 @@
                             Grid.Column="0"
                             Margin="{StaticResource Margin4}"
                             VerticalAlignment="Center"
+                            IsVisible="{Binding BlIsNonWindows}"
+                            Text="{x:Static resx:ResUI.TbSettingsAutoQuitGuiOnStartup}" />
+                        <ToggleSwitch
+                            x:Name="togAutoQuitGuiOnStartup"
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left"
+                            IsVisible="{Binding BlIsNonWindows}" />
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="2"
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding BlIsNonWindows}"
+                            Text="{x:Static resx:ResUI.TbSettingsAutoQuitGuiOnStartupTip}"
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            Grid.Row="3"
+                            Grid.Column="0"
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
                             Text="{x:Static resx:ResUI.TbSettingsStatistics}" />
                         <ToggleSwitch
                             x:Name="togEnableStatistics"
-                            Grid.Row="2"
+                            Grid.Row="3"
                             Grid.Column="1"
                             Margin="{StaticResource Margin4}"
                             HorizontalAlignment="Left" />
 
                         <TextBlock
-                            Grid.Row="3"
+                            Grid.Row="4"
                             Grid.Column="0"
                             Margin="{StaticResource Margin4}"
                             VerticalAlignment="Center"
                             Text="{x:Static resx:ResUI.TbSettingsDisplayRealTimeSpeed}" />
                         <ToggleSwitch
                             x:Name="togDisplayRealTimeSpeed"
-                            Grid.Row="3"
+                            Grid.Row="4"
                             Grid.Column="1"
                             Margin="{StaticResource Margin4}"
                             HorizontalAlignment="Left" />
 
                         <TextBlock
-                            Grid.Row="4"
+                            Grid.Row="5"
                             Grid.Column="0"
                             Margin="{StaticResource Margin4}"
                             VerticalAlignment="Center"
                             Text="{x:Static resx:ResUI.TbSettingsKeepOlderDedupl}" />
                         <ToggleSwitch
                             x:Name="togKeepOlderDedupl"
-                            Grid.Row="4"
+                            Grid.Row="5"
                             Grid.Column="1"
                             Margin="{StaticResource Margin4}"
                             HorizontalAlignment="Left" />

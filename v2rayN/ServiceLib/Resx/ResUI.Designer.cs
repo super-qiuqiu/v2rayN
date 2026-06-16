@@ -3824,6 +3824,24 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("TbSettingsAutoHideStartup", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   查找类似 Exit GUI after boot startup and keep core running 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsAutoQuitGuiOnStartup {
+            get {
+                return ResourceManager.GetString("TbSettingsAutoQuitGuiOnStartup", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Only available when Start on boot is enabled. On macOS startup, v2rayN exits the GUI after the core starts. 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsAutoQuitGuiOnStartupTip {
+            get {
+                return ResourceManager.GetString("TbSettingsAutoQuitGuiOnStartupTip", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   查找类似 Automatic update interval for Geo files (hours) 的本地化字符串。

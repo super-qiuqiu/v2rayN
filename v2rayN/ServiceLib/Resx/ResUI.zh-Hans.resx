@@ -669,6 +669,12 @@
   <data name="TbSettingsAutoHideStartup" xml:space="preserve">
     <value>启动后隐藏窗口</value>
   </data>
+  <data name="TbSettingsAutoQuitGuiOnStartup" xml:space="preserve">
+    <value>开机自启后退出 GUI 并保留核心</value>
+  </data>
+  <data name="TbSettingsAutoQuitGuiOnStartupTip" xml:space="preserve">
+    <value>仅在“开机启动”开启时可用。Linux/macOS 开机自启后，核心启动成功即退出 GUI。</value>
+  </data>
   <data name="TbSettingsAutoUpdateInterval" xml:space="preserve">
     <value>自动更新 Geo 文件的间隔 (小时)</value>
   </data>

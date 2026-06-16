@@ -30,6 +30,12 @@ public partial class App : Application
             {
                 Current?.TryGetFeature<IActivatableLifetime>()?.Activated += OnMacOSActivated;
             }
+
+            // Auto quit GUI after core starts if --auto-quit-gui flag is set
+            if (Program.AutoQuitGui)
+            {
+                _ = Task.Run(AutoQuitGuiAfterCoreStart);
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -157,6 +163,75 @@ public partial class App : Application
         }
 
         NoticeManager.Instance.Enqueue(ResUI.OperationFailed);
+    }
+
+    private async Task AutoQuitGuiAfterCoreStart()
+    {
+        try
+        {
+            Logging.SaveLog("AutoQuitGui: Waiting for core to start...");
+
+            // Wait for core to start (check every second, up to 30 seconds)
+            for (int i = 0; i < 30; i++)
+            {
+                await Task.Delay(1000);
+
+                if (CoreManager.Instance.HasRunningCore)
+                {
+                    Logging.SaveLog($"AutoQuitGui: Core detected running after {i + 1} seconds, exiting GUI...");
+
+                    // Wait a bit more to ensure core is stable
+                    await Task.Delay(2000);
+
+                    await RunOnUiThreadAsync(ExitGuiKeepCoreAsync);
+                    return;
+                }
+            }
+
+            Logging.SaveLog("AutoQuitGui: Timeout waiting for core to start, GUI will remain open");
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog("AutoQuitGui error", ex);
+        }
+    }
+
+    private static async Task ExitGuiKeepCoreAsync()
+    {
+        if (await AppManager.Instance.AppExitAsync(false, keepCore: true))
+        {
+            Logging.SaveLog("AutoQuitGui: Successfully exited GUI, core still running");
+            AppManager.Instance.Shutdown(false);
+            return;
+        }
+
+        Logging.SaveLog("AutoQuitGui: Failed to exit while keeping core");
+    }
+
+    private static async Task RunOnUiThreadAsync(Func<Task> action)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            await action();
+            return;
+        }
+
+        var completion = new TaskCompletionSource<bool>();
+
+        Dispatcher.UIThread.Post(async () =>
+        {
+            try
+            {
+                await action();
+                completion.SetResult(true);
+            }
+            catch (Exception ex)
+            {
+                completion.SetException(ex);
+            }
+        });
+
+        await completion.Task;
     }
 
     #endregion App Event

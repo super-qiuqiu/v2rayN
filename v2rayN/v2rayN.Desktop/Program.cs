@@ -5,6 +5,7 @@ namespace v2rayN.Desktop;
 internal class Program
 {
     public static EventWaitHandle ProgramStarted;
+    public static bool AutoQuitGui { get; private set; }
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
@@ -24,6 +25,9 @@ internal class Program
 
     private static bool OnStartup(string[]? Args)
     {
+        // Check for auto-quit-gui flag
+        AutoQuitGui = (Args ?? []).Any(t => t == "--" + Global.AutoQuitGui);
+
         if (Utils.IsWindows())
         {
             var exePathKey = Utils.GetMd5(Utils.GetExePath());

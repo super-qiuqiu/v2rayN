@@ -669,6 +669,12 @@
   <data name="TbSettingsAutoHideStartup" xml:space="preserve">
     <value>Auto hide on startup</value>
   </data>
+  <data name="TbSettingsAutoQuitGuiOnStartup" xml:space="preserve">
+    <value>Exit GUI after boot startup and keep core running</value>
+  </data>
+  <data name="TbSettingsAutoQuitGuiOnStartupTip" xml:space="preserve">
+    <value>Only available when Start on boot is enabled. On Linux/macOS startup, v2rayN exits the GUI after the core starts.</value>
+  </data>
   <data name="TbSettingsAutoUpdateInterval" xml:space="preserve">
     <value>Automatic update interval for Geo files (hours)</value>
   </data>
