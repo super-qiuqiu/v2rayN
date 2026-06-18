@@ -478,7 +478,8 @@ public class Global
         "fa",
         "fr",
         "ru",
-        "hu"
+        "hu",
+        "id"
     ];
 
     public static readonly List<string> Alpns =
