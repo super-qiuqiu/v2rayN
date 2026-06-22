@@ -6,6 +6,7 @@ public class StatisticsXrayService
     private ServerSpeedItem _serverSpeedItem = new();
     private readonly Config _config;
     private bool _exitFlag;
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly Func<ServerSpeedItem, Task>? _updateFunc;
     private string Url => $"{Global.HttpProtocol}{Global.Loopback}:{AppManager.Instance.StatePort}/debug/vars";
 
@@ -15,32 +16,37 @@ public class StatisticsXrayService
         _updateFunc = updateFunc;
         _exitFlag = false;
 
-        _ = Task.Run(Run);
+        _ = Task.Run(() => Run(_cancellationTokenSource.Token));
     }
 
     public void Close()
     {
         _exitFlag = true;
+        _cancellationTokenSource.Cancel();
     }
 
-    private async Task Run()
+    private async Task Run(CancellationToken cancellationToken)
     {
-        while (!_exitFlag)
+        while (!_exitFlag && !cancellationToken.IsCancellationRequested)
         {
-            await Task.Delay(1000);
             try
             {
-                if (AppManager.Instance.RunningCoreType != ECoreType.Xray)
+                await Task.Delay(1000, cancellationToken);
+                if (!AppManager.Instance.IsRunningCore(ECoreType.Xray))
                 {
                     continue;
                 }
 
-                var result = await HttpClientHelper.Instance.TryGetAsync(Url);
+                var result = await HttpClientHelper.Instance.TryGetAsync(Url, cancellationToken);
                 if (result != null)
                 {
                     var server = ParseOutput(result) ?? new ServerSpeedItem();
                     await _updateFunc?.Invoke(server);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch
             {

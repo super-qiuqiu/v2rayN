@@ -7,6 +7,7 @@ public partial class MsgView
         InitializeComponent();
 
         ViewModel = new MsgViewModel(UpdateViewHandler);
+        Unloaded += (_, _) => ViewModel?.Dispose();
 
         this.WhenActivated(disposables =>
         {
@@ -39,6 +40,10 @@ public partial class MsgView
                     ShowMsg(obj);
                 }, DispatcherPriority.ApplicationIdle);
                 break;
+
+            case EViewAction.DispatcherScrollToEnd:
+                Application.Current?.Dispatcher.Invoke(ScrollToEnd, DispatcherPriority.ApplicationIdle);
+                break;
         }
         return await Task.FromResult(true);
     }
@@ -51,16 +56,20 @@ public partial class MsgView
         }
 
         txtMsg.AppendText(msg.ToString());
-        if (togScrollToEnd.IsChecked ?? true)
-        {
-            txtMsg.ScrollToEnd();
-        }
     }
 
     public void ClearMsg()
     {
         txtMsg.Clear();
         txtMsg.AppendText("----- Message cleared -----\n");
+    }
+
+    private void ScrollToEnd()
+    {
+        if (togScrollToEnd.IsChecked ?? true)
+        {
+            txtMsg.ScrollToEnd();
+        }
     }
 
     private void menuMsgViewSelectAll_Click(object sender, System.Windows.RoutedEventArgs e)

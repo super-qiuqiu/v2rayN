@@ -1,10 +1,13 @@
 namespace ServiceLib.ViewModels;
 
-public class MsgViewModel : MyReactiveObject
+public class MsgViewModel : MyReactiveObject, IDisposable
 {
+    private static readonly TimeSpan MsgBufferInterval = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan ScrollInterval = TimeSpan.FromSeconds(2);
     private readonly ConcurrentQueue<string> _queueMsg = new();
+    private readonly CompositeDisposable _disposables = [];
     private volatile bool _lastMsgFilterNotAvailable;
-    private int _showLock = 0; // 0 = unlocked, 1 = locked
+    private int _pendingScroll;
     public int NumMaxMsg { get; } = 500;
 
     [Reactive]
@@ -29,46 +32,73 @@ public class MsgViewModel : MyReactiveObject
           y => y == true)
               .Subscribe(c => _config.MsgUIItem.AutoRefresh = AutoRefresh);
 
-        AppEvents.SendMsgViewRequested
+        _disposables.Add(AppEvents.SendMsgViewRequested
          .AsObservable()
-         //.ObserveOn(RxSchedulers.MainThreadScheduler)
-         .Subscribe(content => _ = AppendQueueMsg(content));
+         .Buffer(MsgBufferInterval, 100)
+         .Where(messages => messages.Count > 0)
+         .Subscribe(messages => _ = AppendQueueMsg(messages)));
+
+        _disposables.Add(Observable.Interval(ScrollInterval)
+         .Subscribe(tick => _ = ScrollToEnd()));
     }
 
-    private async Task AppendQueueMsg(string msg)
+    private async Task AppendQueueMsg(IList<string> messages)
     {
         if (AutoRefresh == false)
         {
             return;
         }
 
-        EnqueueQueueMsg(msg);
+        foreach (var msg in messages)
+        {
+            EnqueueQueueMsg(msg);
+        }
 
         if (!AppManager.Instance.ShowInTaskbar)
         {
             return;
         }
 
-        if (Interlocked.CompareExchange(ref _showLock, 1, 0) != 0)
+        var sb = new StringBuilder();
+        while (_queueMsg.TryDequeue(out var line))
+        {
+            sb.Append(line);
+        }
+
+        if (sb.Length <= 0)
+        {
+            return;
+        }
+
+        Interlocked.Exchange(ref _pendingScroll, 1);
+        try
+        {
+            await _updateView?.Invoke(EViewAction.DispatcherShowMsg, sb.ToString());
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(nameof(MsgViewModel), ex);
+        }
+    }
+
+    private async Task ScrollToEnd()
+    {
+        if (Interlocked.Exchange(ref _pendingScroll, 0) == 0)
+        {
+            return;
+        }
+        if (AutoRefresh == false || !AppManager.Instance.ShowInTaskbar)
         {
             return;
         }
 
         try
         {
-            await Task.Delay(500).ConfigureAwait(false);
-
-            var sb = new StringBuilder();
-            while (_queueMsg.TryDequeue(out var line))
-            {
-                sb.Append(line);
-            }
-
-            await _updateView?.Invoke(EViewAction.DispatcherShowMsg, sb.ToString());
+            await _updateView?.Invoke(EViewAction.DispatcherScrollToEnd, null);
         }
-        finally
+        catch (Exception ex)
         {
-            Interlocked.Exchange(ref _showLock, 0);
+            Logging.SaveLog(nameof(MsgViewModel), ex);
         }
     }
 
@@ -117,5 +147,10 @@ public class MsgViewModel : MyReactiveObject
     {
         _config.MsgUIItem.MainMsgFilter = MsgFilter;
         _lastMsgFilterNotAvailable = false;
+    }
+
+    public void Dispose()
+    {
+        _disposables.Dispose();
     }
 }

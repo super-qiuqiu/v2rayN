@@ -2,8 +2,15 @@ namespace ServiceLib.Services;
 
 public class ProcessService : IDisposable
 {
+    private const int OutputBatchSize = 100;
+    private static readonly TimeSpan OutputBatchInterval = TimeSpan.FromMilliseconds(500);
     private readonly Process _process;
     private readonly Func<bool, string, Task>? _updateFunc;
+    private readonly ConcurrentQueue<string> _pendingOutput = new();
+    private readonly SemaphoreSlim _outputSignal = new(0);
+    private readonly CancellationTokenSource _outputCancellationTokenSource = new();
+    private Task? _outputPumpTask;
+    private int _outputSignalState;
     private bool _isDisposed;
 
     public int Id => _process.Id;
@@ -50,6 +57,7 @@ public class ProcessService : IDisposable
 
         if (displayLog)
         {
+            _outputPumpTask = Task.Run(ProcessOutputQueueAsync);
             RegisterEventHandlers();
         }
     }
@@ -75,6 +83,7 @@ public class ProcessService : IDisposable
     {
         if (_process.HasExited)
         {
+            await StopOutputPumpAsync();
             return;
         }
 
@@ -93,6 +102,7 @@ public class ProcessService : IDisposable
                 }
                 catch { }
             }
+            await StopOutputPumpAsync();
 
             try
             {
@@ -141,6 +151,7 @@ public class ProcessService : IDisposable
             }
 
             _process.EnableRaisingEvents = false;
+            StopOutputPump();
             _process.Dispose();
         }
         catch (Exception ex)
@@ -158,7 +169,8 @@ public class ProcessService : IDisposable
         {
             if (e.Data.IsNotEmpty())
             {
-                _ = _updateFunc?.Invoke(false, e.Data + Environment.NewLine);
+                _pendingOutput.Enqueue(e.Data + Environment.NewLine);
+                SignalOutput();
             }
         }
 
@@ -171,11 +183,129 @@ public class ProcessService : IDisposable
             {
                 _process.OutputDataReceived -= dataHandler;
                 _process.ErrorDataReceived -= dataHandler;
+                SignalOutput();
             }
             catch
             {
             }
         };
+    }
+
+    private async Task ProcessOutputQueueAsync()
+    {
+        var token = _outputCancellationTokenSource.Token;
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                await _outputSignal.WaitAsync(token);
+                if (_pendingOutput.Count < OutputBatchSize)
+                {
+                    await Task.Delay(OutputBatchInterval, token);
+                }
+
+                Interlocked.Exchange(ref _outputSignalState, 0);
+                await FlushOutputAsync();
+                SignalOutputIfPending();
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                Logging.SaveLog(nameof(ProcessService), ex);
+            }
+        }
+
+        try
+        {
+            await FlushOutputAsync();
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(nameof(ProcessService), ex);
+        }
+    }
+
+    private async Task FlushOutputAsync()
+    {
+        if (_updateFunc == null)
+        {
+            while (_pendingOutput.TryDequeue(out _))
+            {
+            }
+            return;
+        }
+
+        var sb = new StringBuilder();
+        var lineCount = 0;
+        while (_pendingOutput.TryDequeue(out var line))
+        {
+            sb.Append(line);
+            lineCount++;
+            if (lineCount < OutputBatchSize)
+            {
+                continue;
+            }
+
+            await _updateFunc(false, sb.ToString());
+            sb.Clear();
+            lineCount = 0;
+        }
+
+        if (sb.Length > 0)
+        {
+            await _updateFunc(false, sb.ToString());
+        }
+    }
+
+    private void SignalOutput()
+    {
+        if (Interlocked.Exchange(ref _outputSignalState, 1) == 0)
+        {
+            _outputSignal.Release();
+        }
+    }
+
+    private void SignalOutputIfPending()
+    {
+        if (!_pendingOutput.IsEmpty)
+        {
+            SignalOutput();
+        }
+    }
+
+    private async Task StopOutputPumpAsync()
+    {
+        if (_outputPumpTask == null)
+        {
+            return;
+        }
+
+        _outputCancellationTokenSource.Cancel();
+        SignalOutput();
+        await _outputPumpTask;
+        _outputPumpTask = null;
+    }
+
+    private void StopOutputPump()
+    {
+        if (_outputPumpTask == null)
+        {
+            return;
+        }
+
+        _outputCancellationTokenSource.Cancel();
+        SignalOutput();
+        try
+        {
+            _outputPumpTask.Wait(OutputBatchInterval);
+        }
+        catch
+        {
+        }
+        _outputPumpTask = null;
     }
 
     public void Dispose()
@@ -203,6 +333,7 @@ public class ProcessService : IDisposable
                 _process.Kill();
             }
 
+            StopOutputPump();
             _process.Dispose();
         }
         catch (Exception ex)

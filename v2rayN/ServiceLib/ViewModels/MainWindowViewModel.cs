@@ -274,10 +274,6 @@ public class MainWindowViewModel : MyReactiveObject
         await CoreManager.Instance.Init(_config, UpdateHandler);
         TaskManager.Instance.RegUpdateTask(_config, UpdateTaskHandler);
 
-        if (_config.GuiItem.EnableStatistics || _config.GuiItem.DisplayRealTimeSpeed)
-        {
-            await StatisticsManager.Instance.Init(_config, UpdateStatisticsHandler);
-        }
         await RefreshServers();
 
         await Reload();
@@ -335,6 +331,14 @@ public class MainWindowViewModel : MyReactiveObject
         }
         AppEvents.DispatcherStatisticsRequested.Publish(update);
         await Task.CompletedTask;
+    }
+
+    private async Task InitStatistics()
+    {
+        if (_config.GuiItem.EnableStatistics || _config.GuiItem.DisplayRealTimeSpeed)
+        {
+            await StatisticsManager.Instance.Init(_config, UpdateStatisticsHandler);
+        }
     }
 
     #endregion Actions
@@ -582,6 +586,7 @@ public class MainWindowViewModel : MyReactiveObject
                 await SysProxyHandler.UpdateSysProxy(_config, false);
                 await Task.Delay(1000);
             });
+            await InitStatistics();
             AppEvents.TestServerRequested.Publish();
 
             var showClashUI = AppManager.Instance.IsRunningCore(ECoreType.sing_box);

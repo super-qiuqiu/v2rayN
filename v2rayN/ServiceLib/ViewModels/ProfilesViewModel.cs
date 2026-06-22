@@ -248,6 +248,7 @@ public class ProfilesViewModel : MyReactiveObject
 
         AppEvents.DispatcherStatisticsRequested
             .AsObservable()
+            .Sample(TimeSpan.FromSeconds(3))
             .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(async result => await UpdateStatistics(result));
 
@@ -313,8 +314,7 @@ public class ProfilesViewModel : MyReactiveObject
     public async Task UpdateStatistics(ServerSpeedItem update)
     {
         if (!_config.GuiItem.EnableStatistics
-            || (update.ProxyUp + update.ProxyDown) <= 0
-            || DateTime.Now.Second % 3 != 0)
+            || (update.ProxyUp + update.ProxyDown) <= 0)
         {
             return;
         }

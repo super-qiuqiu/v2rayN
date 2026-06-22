@@ -133,6 +133,7 @@ public partial class MainWindow
 
             AppEvents.SendSnackMsgRequested
               .AsObservable()
+              .Sample(TimeSpan.FromSeconds(1))
               .ObserveOn(RxSchedulers.MainThreadScheduler)
               .Subscribe(async content => await DelegateSnackMsg(content))
               .DisposeWith(disposables);

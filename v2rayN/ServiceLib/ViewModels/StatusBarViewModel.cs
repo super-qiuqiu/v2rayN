@@ -200,6 +200,7 @@ public class StatusBarViewModel : MyReactiveObject
 
         AppEvents.DispatcherStatisticsRequested
             .AsObservable()
+            .Sample(TimeSpan.FromSeconds(1))
             .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(async result => await UpdateStatistics(result));
 

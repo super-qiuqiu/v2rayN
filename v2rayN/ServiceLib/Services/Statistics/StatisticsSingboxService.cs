@@ -6,6 +6,7 @@ public class StatisticsSingboxService
 {
     private readonly Config _config;
     private bool _exitFlag;
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
     private ClientWebSocket? webSocket;
     private readonly Func<ServerSpeedItem, Task>? _updateFunc;
     private string Url => $"ws://{Global.Loopback}:{AppManager.Instance.StatePort2}/traffic";
@@ -17,20 +18,24 @@ public class StatisticsSingboxService
         _updateFunc = updateFunc;
         _exitFlag = false;
 
-        _ = Task.Run(Run);
+        _ = Task.Run(() => Run(_cancellationTokenSource.Token));
     }
 
-    private async Task Init()
+    private async Task Init(CancellationToken cancellationToken)
     {
-        await Task.Delay(5000);
+        await Task.Delay(5000, cancellationToken);
 
         try
         {
             if (webSocket == null)
             {
                 webSocket = new ClientWebSocket();
-                await webSocket.ConnectAsync(new Uri(Url), CancellationToken.None);
+                await webSocket.ConnectAsync(new Uri(Url), cancellationToken);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch { }
     }
@@ -40,6 +45,7 @@ public class StatisticsSingboxService
         try
         {
             _exitFlag = true;
+            _cancellationTokenSource.Cancel();
             if (webSocket != null)
             {
                 webSocket.Abort();
@@ -52,15 +58,22 @@ public class StatisticsSingboxService
         }
     }
 
-    private async Task Run()
+    private async Task Run(CancellationToken cancellationToken)
     {
-        await Init();
-
-        while (!_exitFlag)
+        try
         {
-            await Task.Delay(1000);
+            await Init(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        while (!_exitFlag && !cancellationToken.IsCancellationRequested)
+        {
             try
             {
+                await Task.Delay(1000, cancellationToken);
                 if (!AppManager.Instance.IsRunningCore(ECoreType.sing_box))
                 {
                     continue;
@@ -71,7 +84,7 @@ public class StatisticsSingboxService
                     {
                         webSocket.Abort();
                         webSocket = null;
-                        await Init();
+                        await Init(cancellationToken);
                         continue;
                     }
 
@@ -81,8 +94,8 @@ public class StatisticsSingboxService
                     }
 
                     var buffer = new byte[1024];
-                    var res = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    while (!res.CloseStatus.HasValue)
+                    var res = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                    while (!res.CloseStatus.HasValue && !cancellationToken.IsCancellationRequested)
                     {
                         var result = Encoding.UTF8.GetString(buffer, 0, res.Count);
                         if (result.IsNotEmpty())
@@ -95,9 +108,13 @@ public class StatisticsSingboxService
                                 ProxyDown = (long)(down / 1000)
                             });
                         }
-                        res = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                        res = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch
             {
