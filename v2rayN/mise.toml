@@ -1,0 +1,19 @@
+[tools]
+dotnet = "10.0.109"
+
+[tasks.build]
+description = "Build ServiceLib + ServiceLib.Tests (incremental)"
+run = """
+dotnet build ServiceLib/ServiceLib.csproj
+dotnet build ServiceLib.Tests/ServiceLib.Tests.csproj
+"""
+
+[tasks.test]
+description = "Run ServiceLib.Tests (requires build first)"
+run = "dotnet test ServiceLib.Tests/ServiceLib.Tests.csproj --no-build"
+
+[tasks.build-and-test]
+description = "Build then test (deterministic, cacheable)"
+run = """
+dotnet build ServiceLib/ServiceLib.csproj && dotnet build ServiceLib.Tests/ServiceLib.Tests.csproj && dotnet test ServiceLib.Tests/ServiceLib.Tests.csproj --no-build
+"""
