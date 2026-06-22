@@ -1713,9 +1713,6 @@ Tindakan "Ambil sertifikat" mungkin gagal jika sertifikat self-signed digunakan 
   <data name="TbSettingsSendThroughTip" xml:space="preserve">
     <value>Untuk lingkungan multi-antarmuka, masukkan alamat IPv4 mesin lokal.</value>
   </data>
-  <data name="FillCorrectSendThroughIPv4" xml:space="preserve">
-    <value>Isi alamat IPv4 yang benar untuk SendThrough.</value>
-  </data>
   <data name="TbSettingsBindInterface" xml:space="preserve">
     <value>Bind Interface</value>
   </data>

@@ -716,6 +716,24 @@ public class Utils
         return (endpoints, connections);
     }
 
+    public static bool IsLocalIP(string ipAddress)
+    {
+        if (!IPAddress.TryParse(ipAddress, out var targetAddress))
+        {
+            return false;
+        }
+
+        return NetworkInterface.GetAllNetworkInterfaces()
+               .SelectMany(ni => ni.GetIPProperties().UnicastAddresses)
+               .Any(ua => ua.Address.Equals(targetAddress));
+    }
+
+    public static bool ContainsInterfaceName(string inInterfaceName)
+    {
+        return NetworkInterface.GetAllNetworkInterfaces()
+            .Any(ni => ni.Name.Equals(inInterfaceName, StringComparison.OrdinalIgnoreCase));
+    }
+
     #endregion Speed Test
 
     #region Miscellaneous
