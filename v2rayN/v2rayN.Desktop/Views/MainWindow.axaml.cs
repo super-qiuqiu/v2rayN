@@ -12,7 +12,6 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
     private readonly WindowNotificationManager? _manager;
     private CheckUpdateView? _checkUpdateView;
     private BackupAndRestoreView? _backupAndRestoreView;
-    private NetBridgeView? _netBridgeView;
     private bool _blCloseByUser = false;
 
     public MainWindow()
@@ -30,7 +29,6 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
         menuBackupAndRestore.Click += MenuBackupAndRestore_Click;
         menuExitKeepCore.Click += MenuExitKeepCore_Click;
         menuClose.Click += MenuClose_Click;
-        menuNetBridge.Click += MenuNetBridge_Click;
 
         ViewModel = new MainWindowViewModel(UpdateViewHandler);
 
@@ -169,7 +167,6 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
         {
             Title = $"{Utils.GetVersion()}";
             menuAddServerViaScan.IsVisible = false;
-            menuNetBridge.IsVisible = false;
         }
 
         if (_config.UiItem.AutoHideStartup && Utils.IsWindows())
@@ -382,19 +379,6 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
     {
         _backupAndRestoreView ??= new BackupAndRestoreView(this);
         DialogHost.Show(_backupAndRestoreView);
-    }
-
-    private void MenuNetBridge_Click(object? sender, RoutedEventArgs e)
-    {
-        if (Utils.IsAdministrator())
-        {
-            _netBridgeView ??= new NetBridgeView();
-            DialogHost.Show(_netBridgeView);
-        }
-        else
-        {
-            NoticeManager.Instance.SendMessageAndEnqueue(ResUI.RunAsAdmin);
-        }
     }
 
     private async void MenuClose_Click(object? sender, RoutedEventArgs e)
