@@ -35,12 +35,14 @@ public static class SubscriptionHandler
                 await updateFunc?.Invoke(false, $"{hashCode}{ResUI.MsgStartGettingSubscriptions}");
 
                 // Get all subscription content (main subscription + additional subscriptions)
-                var result = await DownloadAllSubscriptions(config, item, blProxy, downloadHandle);
+                var result = await DownloadAllSubscriptions(config, item, blProxy, downloadHandle, hashCode, updateFunc);
 
                 // Process download result
                 if (await ProcessDownloadResult(config, item.Id, result, hashCode, updateFunc))
                 {
                     successCount++;
+                    item.UpdateTime = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
+                    await ConfigHandler.AddSubItem(config, item);
                 }
 
                 await updateFunc?.Invoke(false, "-------------------------------------------------------");
@@ -103,21 +105,21 @@ public static class SubscriptionHandler
         return result ?? string.Empty;
     }
 
-    private static async Task<string> DownloadAllSubscriptions(Config config, SubItem item, bool blProxy, DownloadService downloadHandle)
+    private static async Task<string> DownloadAllSubscriptions(Config config, SubItem item, bool blProxy, DownloadService downloadHandle, string hashCode, Func<bool, string, Task> updateFunc)
     {
         // Download main subscription content
-        var result = await DownloadMainSubscription(config, item, blProxy, downloadHandle);
+        var result = await DownloadMainSubscription(config, item, blProxy, downloadHandle, hashCode, updateFunc);
 
         // Process additional subscription links (if any)
         if (item.ConvertTarget.IsNullOrEmpty() && item.MoreUrl.TrimEx().IsNotEmpty())
         {
-            result = await DownloadAdditionalSubscriptions(item, result, blProxy, downloadHandle);
+            result = await DownloadAdditionalSubscriptions(item, result, blProxy, downloadHandle, hashCode, updateFunc);
         }
 
         return result;
     }
 
-    private static async Task<string> DownloadMainSubscription(Config config, SubItem item, bool blProxy, DownloadService downloadHandle)
+    private static async Task<string> DownloadMainSubscription(Config config, SubItem item, bool blProxy, DownloadService downloadHandle, string hashCode, Func<bool, string, Task> updateFunc)
     {
         // Prepare subscription URL and download directly
         var url = Utils.GetPunycode(item.Url.TrimEx());
@@ -143,10 +145,86 @@ public static class SubscriptionHandler
         }
 
         // Download and return result directly
-        return await DownloadSubscriptionContent(downloadHandle, url, blProxy, item.UserAgent);
+        if (!SubscriptionAutoDetector.IsAutoUserAgent(item.UserAgent))
+        {
+            return await DownloadSubscriptionContent(downloadHandle, url, blProxy, item.UserAgent);
+        }
+
+        return await DownloadSubscriptionContentAuto(downloadHandle, url, blProxy, item, true, hashCode, updateFunc);
     }
 
-    private static async Task<string> DownloadAdditionalSubscriptions(SubItem item, string mainResult, bool blProxy, DownloadService downloadHandle)
+    private static async Task<string> DownloadSubscriptionContentAuto(DownloadService downloadHandle, string url, bool blProxy, SubItem item, bool persistDetectedUserAgent, string hashCode, Func<bool, string, Task> updateFunc)
+    {
+        if (persistDetectedUserAgent && item.DetectedUserAgent.IsNotEmpty())
+        {
+            SubscriptionAutoDetector.SavePreferredUserAgent(url, SubscriptionAutoDetector.FromPersistedUserAgent(item.DetectedUserAgent), item.Filter);
+        }
+
+        if (SubscriptionAutoDetector.TryGetPreferredUserAgent(url, item.Filter, out var preferredUserAgent))
+        {
+            var preferredResult = await DownloadSubscriptionContent(downloadHandle, url, blProxy, preferredUserAgent);
+            if (preferredResult.IsNotEmpty())
+            {
+                var preferredDetectResult = SubscriptionAutoDetector.Detect(preferredUserAgent, preferredResult, item.Filter);
+                if (preferredDetectResult.Score > 0)
+                {
+                    await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent cached {DisplayAutoUserAgent(preferredUserAgent)} ({preferredDetectResult.ShareLinkCount} nodes)");
+                    return preferredResult;
+                }
+            }
+        }
+
+        SubscriptionDetectResult? bestResult = null;
+        var triedUserAgents = new HashSet<string>();
+
+        foreach (var userAgent in SubscriptionAutoDetector.GetCandidateUserAgents(url, item.Filter))
+        {
+            if (!triedUserAgents.Add(userAgent))
+            {
+                continue;
+            }
+
+            var result = await DownloadSubscriptionContent(downloadHandle, url, blProxy, userAgent);
+            if (result.IsNullOrEmpty())
+            {
+                continue;
+            }
+
+            var detectResult = SubscriptionAutoDetector.Detect(userAgent, result, item.Filter);
+            bestResult ??= detectResult;
+            if (detectResult.Score > bestResult.Score)
+            {
+                bestResult = detectResult;
+            }
+
+            await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent {DisplayAutoUserAgent(userAgent)}: {detectResult.ShareLinkCount} nodes");
+        }
+
+        if (bestResult == null)
+        {
+            return string.Empty;
+        }
+
+        if (bestResult.Score > 0)
+        {
+            SubscriptionAutoDetector.SavePreferredUserAgent(url, bestResult.UserAgent, item.Filter);
+            if (persistDetectedUserAgent)
+            {
+                item.DetectedUserAgent = SubscriptionAutoDetector.ToPersistedUserAgent(bestResult.UserAgent);
+                await SQLiteHelper.Instance.UpdateAsync(item);
+            }
+        }
+
+        await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent selected {DisplayAutoUserAgent(bestResult.UserAgent)} ({bestResult.ShareLinkCount} nodes)");
+        return bestResult.Content;
+    }
+
+    private static string DisplayAutoUserAgent(string userAgent)
+    {
+        return userAgent.IsNullOrEmpty() ? "default" : userAgent;
+    }
+
+    private static async Task<string> DownloadAdditionalSubscriptions(SubItem item, string mainResult, bool blProxy, DownloadService downloadHandle, string hashCode, Func<bool, string, Task> updateFunc)
     {
         var result = mainResult;
 
@@ -166,7 +244,9 @@ public static class SubscriptionHandler
                 continue;
             }
 
-            var additionalResult = await DownloadSubscriptionContent(downloadHandle, url2, blProxy, item.UserAgent);
+            var additionalResult = SubscriptionAutoDetector.IsAutoUserAgent(item.UserAgent)
+                ? await DownloadSubscriptionContentAuto(downloadHandle, url2, blProxy, item, false, hashCode, updateFunc)
+                : await DownloadSubscriptionContent(downloadHandle, url2, blProxy, item.UserAgent);
 
             if (additionalResult.IsNotEmpty())
             {

@@ -18,6 +18,10 @@ public class SubEditViewModel : MyReactiveObject
         });
 
         SelectedSource = subItem.Id.IsNullOrEmpty() ? subItem : JsonUtils.DeepCopy(subItem);
+        if (SelectedSource.UserAgent.IsNullOrEmpty())
+        {
+            SelectedSource.UserAgent = Global.SubscriptionUserAgentAuto;
+        }
     }
 
     private async Task SaveSubAsync()
@@ -44,6 +48,11 @@ public class SubEditViewModel : MyReactiveObject
                 NoticeManager.Instance.Enqueue(ResUI.InsecureUrlProtocol);
                 //return;
             }
+        }
+
+        if (SelectedSource.UserAgent.IsNullOrEmpty())
+        {
+            SelectedSource.UserAgent = Global.SubscriptionUserAgentAuto;
         }
 
         if (await ConfigHandler.AddSubItem(_config, SelectedSource) == 0)

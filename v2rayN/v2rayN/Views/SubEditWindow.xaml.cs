@@ -12,6 +12,7 @@ public partial class SubEditWindow
         ViewModel = new SubEditViewModel(subItem, UpdateViewHandler);
 
         cmbConvertTarget.ItemsSource = Global.SubConvertTargets;
+        cmbUserAgent.ItemsSource = Global.SubscriptionUserAgents;
 
         this.WhenActivated(disposables =>
         {
@@ -20,7 +21,7 @@ public partial class SubEditWindow
             this.Bind(ViewModel, vm => vm.SelectedSource.MoreUrl, v => v.txtMoreUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SelectedSource.Enabled, v => v.togEnable.IsChecked).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SelectedSource.AutoUpdateInterval, v => v.txtAutoUpdateInterval.Text).DisposeWith(disposables);
-            this.Bind(ViewModel, vm => vm.SelectedSource.UserAgent, v => v.txtUserAgent.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.SelectedSource.UserAgent, v => v.cmbUserAgent.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SelectedSource.Sort, v => v.txtSort.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SelectedSource.Filter, v => v.txtFilter.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SelectedSource.ConvertTarget, v => v.cmbConvertTarget.Text).DisposeWith(disposables);

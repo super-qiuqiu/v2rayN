@@ -161,11 +161,8 @@ public class DownloadService
                 UseProxy = webProxy != null
             });
 
-            if (userAgent.IsNullOrEmpty())
-            {
-                userAgent = Utils.GetVersion(false);
-            }
-            client.DefaultRequestHeaders.UserAgent.TryParseAdd(userAgent);
+            userAgent = NormalizeUserAgent(userAgent);
+            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", userAgent);
 
             Uri uri = new(url);
             //Authorization Header
@@ -197,11 +194,7 @@ public class DownloadService
     {
         try
         {
-            if (userAgent.IsNullOrEmpty())
-            {
-                userAgent = Utils.GetVersion(false);
-            }
-            var result = await DownloaderHelper.Instance.DownloadStringAsync(webProxy, url, userAgent, timeout);
+            var result = await DownloaderHelper.Instance.DownloadStringAsync(webProxy, url, NormalizeUserAgent(userAgent), timeout);
             return result;
         }
         catch (Exception ex)
@@ -214,6 +207,14 @@ public class DownloadService
             }
         }
         return null;
+    }
+
+    private static string NormalizeUserAgent(string userAgent)
+    {
+        userAgent = userAgent.ReplaceLineBreaks(" ").TrimEx();
+        return userAgent.IsNullOrEmpty()
+            ? Utils.GetVersion(false)
+            : userAgent;
     }
 
     /// <summary>

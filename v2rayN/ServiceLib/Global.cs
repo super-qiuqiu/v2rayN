@@ -431,6 +431,25 @@ public class Global
         "golang",
     ];
 
+    public const string SubscriptionUserAgentAuto = "Auto";
+
+    public static readonly List<string> SubscriptionUserAgents =
+    [
+        SubscriptionUserAgentAuto,
+        "v2rayN",
+        "Shadowrocket",
+        "SagerNet",
+        "ClashMetaForAndroid",
+        "ClashforWindows",
+        "clash-verge",
+        "sing-box",
+        "Quantumult X",
+        "Surge",
+        "Stash",
+        "Loon",
+        "NekoBox",
+    ];
+
     public static readonly List<string> XhttpMode =
     [
         "auto",

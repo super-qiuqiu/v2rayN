@@ -82,6 +82,7 @@ public sealed class AppManager
         }
 
         SQLiteHelper.Instance.CreateTable<SubItem>();
+        MigrateSubItemSchema();
         SQLiteHelper.Instance.CreateTable<ProfileItem>();
         SQLiteHelper.Instance.CreateTable<ServerStatItem>();
         SQLiteHelper.Instance.CreateTable<RoutingItem>();
@@ -92,6 +93,20 @@ public sealed class AppManager
         SQLiteHelper.Instance.CreateTable<ProfileGroupItem>();
 #pragma warning restore CS0618
         return true;
+    }
+
+    private static void MigrateSubItemSchema()
+    {
+        var columns = SQLiteHelper.Instance.Query<TableColumnInfo>("PRAGMA table_info(SubItem)");
+        if (!columns.Any(t => t.name == nameof(SubItem.DetectedUserAgent)))
+        {
+            SQLiteHelper.Instance.Execute($"ALTER TABLE SubItem ADD COLUMN {nameof(SubItem.DetectedUserAgent)} TEXT");
+        }
+    }
+
+    private sealed class TableColumnInfo
+    {
+        public string name { get; set; }
     }
 
     public bool InitComponents()
@@ -206,12 +221,24 @@ public sealed class AppManager
 
     public async Task<List<SubItem>?> SubItems()
     {
-        return await SQLiteHelper.Instance.TableAsync<SubItem>().OrderBy(t => t.Sort).ToListAsync();
+        var items = await SQLiteHelper.Instance.TableAsync<SubItem>().OrderBy(t => t.Sort).ToListAsync();
+        items.ForEach(NormalizeSubItem);
+        return items;
     }
 
     public async Task<SubItem?> GetSubItem(string? subid)
     {
-        return await SQLiteHelper.Instance.TableAsync<SubItem>().FirstOrDefaultAsync(t => t.Id == subid);
+        var item = await SQLiteHelper.Instance.TableAsync<SubItem>().FirstOrDefaultAsync(t => t.Id == subid);
+        NormalizeSubItem(item);
+        return item;
+    }
+
+    private static void NormalizeSubItem(SubItem? item)
+    {
+        if (item?.UserAgent.IsNullOrEmpty() == true)
+        {
+            item.UserAgent = Global.SubscriptionUserAgentAuto;
+        }
     }
 
     public async Task<List<ProfileItem>?> ProfileItems(string subid)

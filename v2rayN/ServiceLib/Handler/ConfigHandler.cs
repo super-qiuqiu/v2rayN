@@ -1996,6 +1996,11 @@ public static class ConfigHandler
     /// <returns>0 if successful, -1 if failed</returns>
     public static async Task<int> AddSubItem(Config config, SubItem subItem)
     {
+        if (subItem.UserAgent.IsNullOrEmpty())
+        {
+            subItem.UserAgent = Global.SubscriptionUserAgentAuto;
+        }
+
         var item = await AppManager.Instance.GetSubItem(subItem.Id);
         if (item is null)
         {
@@ -2003,12 +2008,18 @@ public static class ConfigHandler
         }
         else
         {
+            var keepDetectedUserAgent = item.Url == subItem.Url
+                                        && item.UserAgent == subItem.UserAgent
+                                        && item.Filter == subItem.Filter
+                                        && item.ConvertTarget == subItem.ConvertTarget;
+
             item.Remarks = subItem.Remarks;
             item.Url = subItem.Url;
             item.MoreUrl = subItem.MoreUrl;
             item.Enabled = subItem.Enabled;
             item.AutoUpdateInterval = subItem.AutoUpdateInterval;
             item.UserAgent = subItem.UserAgent;
+            item.DetectedUserAgent = keepDetectedUserAgent ? subItem.DetectedUserAgent : null;
             item.Sort = subItem.Sort;
             item.Filter = subItem.Filter;
             item.UpdateTime = subItem.UpdateTime;

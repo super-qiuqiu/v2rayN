@@ -214,16 +214,15 @@
                     Margin="{StaticResource Margin4}"
                     VerticalAlignment="Center"
                     Text="{x:Static resx:ResUI.LvUserAgent}" />
-                <TextBox
-                    x:Name="txtUserAgent"
+                <ComboBox
+                    x:Name="cmbUserAgent"
                     Grid.Row="7"
                     Grid.Column="1"
                     Margin="{StaticResource Margin4}"
                     VerticalAlignment="Center"
+                    IsEditable="True"
                     materialDesign:HintAssist.Hint="{x:Static resx:ResUI.SubUrlTips}"
-                    AcceptsReturn="True"
-                    Style="{StaticResource MyOutlinedTextBox}"
-                    TextWrapping="Wrap" />
+                    Style="{StaticResource MyOutlinedTextComboBox}" />
 
                 <TextBlock
                     Grid.Row="8"

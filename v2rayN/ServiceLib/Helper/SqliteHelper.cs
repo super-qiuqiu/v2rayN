@@ -23,6 +23,16 @@ public sealed class SQLiteHelper
         return _db.CreateTable<T>();
     }
 
+    public int Execute(string sql)
+    {
+        return _db.Execute(sql);
+    }
+
+    public List<T> Query<T>(string sql) where T : new()
+    {
+        return _db.Query<T>(sql);
+    }
+
     public async Task<int> InsertAllAsync(IEnumerable models)
     {
         return await _dbAsync.InsertAllAsync(models, runInTransaction: true).ConfigureAwait(false);
