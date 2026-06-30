@@ -233,6 +233,10 @@ public class BaseFmt
         item.EchConfigList = GetQueryDecoded(query, "ech");
         item.VerifyPeerCertByName = GetQueryDecoded(query, "vcn");
         item.CertSha = GetQueryDecoded(query, "pcs");
+        if (item.CertSha.IsNullOrEmpty())
+        {
+            item.CertSha = GetQueryDecoded(query, "hpkp");
+        }
 
         var finalmaskDecoded = GetQueryDecoded(query, "fm");
         if (finalmaskDecoded.IsNotEmpty())

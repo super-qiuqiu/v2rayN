@@ -438,6 +438,19 @@ public partial class CoreConfigSingboxService
                     tls.certificate = certs;
                     tls.insecure = false;
                 }
+                else if (_node.CertSha.IsNotEmpty())
+                {
+                    var publicKeyPins = CertificatePinningManager.ResolveSingboxPublicKeyPins(
+                        _node.Address,
+                        _node.Port,
+                        serverName,
+                        _node.CertSha);
+                    if (publicKeyPins.Count > 0)
+                    {
+                        tls.certificate_public_key_sha256 = publicKeyPins;
+                        tls.insecure = false;
+                    }
+                }
             }
             else if (_node.StreamSecurity == Global.StreamSecurityReality)
             {

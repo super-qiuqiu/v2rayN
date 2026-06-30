@@ -6,6 +6,7 @@ using ServiceLib.Manager;
 using ServiceLib.Models;
 using ServiceLib.Models.Dto;
 using ServiceLib.Services.CoreConfig;
+using System.Security.Cryptography.X509Certificates;
 using Xunit;
 
 namespace ServiceLib.Tests.CoreConfig.Singbox;
@@ -591,5 +592,31 @@ public class CoreConfigSingboxServiceTests
         proxy.realm.realm_id.Should().Be("my-realm-id");
         proxy.realm.stun_servers.Should().Contain("turn.cloudflare.com:3478");
         proxy.server.Should().BeNull();
+    }
+
+    [Fact]
+    public void CertificatePinningManager_ShouldConvertPinnedCertificateToSingboxPublicKeyPin()
+    {
+        using var rsa = RSA.Create(2048);
+        var request = new CertificateRequest(
+            "CN=example.test",
+            rsa,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+        using var cert = request.CreateSelfSigned(
+            DateTimeOffset.UtcNow.AddDays(-1),
+            DateTimeOffset.UtcNow.AddDays(1));
+        var pemCert = PemEncoding.WriteString("CERTIFICATE", cert.Export(X509ContentType.Cert));
+        var certSha = Convert.ToHexString(SHA256.HashData(cert.RawData));
+        var expectedPublicKeyPin = Convert.ToBase64String(
+            SHA256.HashData(cert.PublicKey.ExportSubjectPublicKeyInfo()));
+
+        var converted = CertificatePinningManager.TryGetSingboxPublicKeyPinFromPinnedCertificate(
+            pemCert,
+            certSha,
+            out var publicKeyPin);
+
+        converted.Should().BeTrue();
+        publicKeyPin.Should().Be(expectedPublicKeyPin);
     }
 }

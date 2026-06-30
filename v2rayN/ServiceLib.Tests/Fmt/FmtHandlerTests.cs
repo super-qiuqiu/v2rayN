@@ -78,6 +78,21 @@ public class FmtHandlerTests
     }
 
     [Fact]
+    public void ResolveConfig_AnytlsHpkp_ShouldPopulateCertSha()
+    {
+        const string certSha = "16dac3717024eb319093d1c95290c14adc850e2814b2208d11c7b7a436923859";
+        var uri =
+            $"anytls://password@example.com:8443/?hpkp={certSha}&insecure=0&sni=www.amazon.com#anytls-demo";
+
+        var resolved = FmtHandler.ResolveConfig(uri, out var msg);
+
+        resolved.Should().NotBeNull($"msg: {msg}");
+        resolved!.ConfigType.Should().Be(EConfigType.Anytls);
+        resolved.CertSha.Should().Be(certSha);
+        resolved.Sni.Should().Be("www.amazon.com");
+    }
+
+    [Fact]
     public void GetShareUri_UnsupportedConfigType_ShouldReturnNull()
     {
         var item = new ProfileItem { ConfigType = EConfigType.PolicyGroup, Remarks = "group", };
