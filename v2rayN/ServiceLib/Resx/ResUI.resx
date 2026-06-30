@@ -1248,6 +1248,9 @@
   <data name="menuProfileAutofitColumnWidth" xml:space="preserve">
     <value>Auto column width adjustment</value>
   </data>
+  <data name="menuProfileColumnSettings" xml:space="preserve">
+    <value>Column settings</value>
+  </data>
   <data name="menuExport2ShareUrlBase64" xml:space="preserve">
     <value>Export Base64-encoded Share Links to Clipboard</value>
   </data>

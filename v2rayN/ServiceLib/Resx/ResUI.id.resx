@@ -1239,6 +1239,9 @@
   <data name="menuProfileAutofitColumnWidth" xml:space="preserve">
     <value>Penyesuaian lebar kolom otomatis</value>
   </data>
+  <data name="menuProfileColumnSettings" xml:space="preserve">
+    <value>Pengaturan kolom</value>
+  </data>
   <data name="menuExport2ShareUrlBase64" xml:space="preserve">
     <value>Ekspor tautan berbagi Base64 ke papan klip</value>
   </data>

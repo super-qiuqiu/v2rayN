@@ -23,6 +23,7 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
 
         menuSelectAll.Click += menuSelectAll_Click;
         btnAutofitColumnWidth.Click += BtnAutofitColumnWidth_Click;
+        btnColumnSettings.Click += BtnColumnSettings_Click;
         txtServerFilter.KeyDown += TxtServerFilter_KeyDown;
         lstProfiles.KeyDown += LstProfiles_KeyDown;
         lstProfiles.SelectionChanged += lstProfiles_SelectionChanged;
@@ -353,6 +354,109 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
     private void BtnAutofitColumnWidth_Click(object? sender, RoutedEventArgs e)
     {
         AutofitColumnWidth();
+    }
+
+    private void BtnColumnSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        BuildColumnSettingsPanel();
+    }
+
+    private void BuildColumnSettingsPanel()
+    {
+        try
+        {
+            columnSettingsPanel.Children.Clear();
+
+            foreach (var column in lstProfiles.Columns.Where(t => t.Tag != null).OrderBy(t => t.DisplayIndex))
+            {
+                var name = column.Tag?.ToString();
+                if (string.IsNullOrEmpty(name))
+                {
+                    continue;
+                }
+
+                var checkBox = new CheckBox
+                {
+                    Content = GetColumnHeaderText(column),
+                    IsChecked = column.IsVisible,
+                    IsEnabled = column.IsVisible || CanShowColumn(name),
+                    Margin = new Thickness(4, 2)
+                };
+                checkBox.Click += (_, _) => ToggleColumnVisibility(column, checkBox);
+
+                columnSettingsPanel.Children.Add(checkBox);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+        }
+    }
+
+    private void ToggleColumnVisibility(DataGridColumn column, CheckBox checkBox)
+    {
+        try
+        {
+            var name = column.Tag?.ToString();
+            if (string.IsNullOrEmpty(name))
+            {
+                return;
+            }
+
+            var visible = checkBox.IsChecked == true;
+            if (!visible && VisibleProfileColumnCount() <= 1)
+            {
+                checkBox.IsChecked = true;
+                return;
+            }
+
+            if (visible && !CanShowColumn(name))
+            {
+                checkBox.IsChecked = false;
+                return;
+            }
+
+            column.IsVisible = visible;
+            if (visible && column.ActualWidth <= 0)
+            {
+                column.Width = new DataGridLength(100, DataGridLengthUnitType.Pixel);
+            }
+
+            StorageUI();
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+        }
+    }
+
+    private int VisibleProfileColumnCount()
+    {
+        return lstProfiles.Columns.Count(t => t.Tag != null && t.IsVisible);
+    }
+
+    private static bool CanShowColumn(string name)
+    {
+        if (name.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
+        {
+            return _config.GuiItem.EnableStatistics;
+        }
+        if (name.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
+        {
+            return _config.SpeedTestItem.IPAPIUrl.IsNotEmpty();
+        }
+
+        return true;
+    }
+
+    private static string GetColumnHeaderText(DataGridColumn column)
+    {
+        return column.Header switch
+        {
+            string text when !string.IsNullOrWhiteSpace(text) => text,
+            TextBlock textBlock when !string.IsNullOrWhiteSpace(textBlock.Text) => textBlock.Text!,
+            _ => column.Tag?.ToString() ?? string.Empty
+        };
     }
 
     private void AutofitColumnWidth()

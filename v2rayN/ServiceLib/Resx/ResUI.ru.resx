@@ -1239,6 +1239,9 @@
   <data name="menuProfileAutofitColumnWidth" xml:space="preserve">
     <value>Автоматическая регулировка ширины столбца</value>
   </data>
+  <data name="menuProfileColumnSettings" xml:space="preserve">
+    <value>Настройки столбцов</value>
+  </data>
   <data name="menuExport2ShareUrlBase64" xml:space="preserve">
     <value>Экспорт ссылок в формате Base64 в буфер обмена</value>
   </data>

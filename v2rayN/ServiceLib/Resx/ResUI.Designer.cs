@@ -1384,6 +1384,15 @@ namespace ServiceLib.Resx {
         }
 
         /// <summary>
+        ///   查找类似 Column settings 的本地化字符串。
+        /// </summary>
+        public static string menuProfileColumnSettings {
+            get {
+                return ResourceManager.GetString("menuProfileColumnSettings", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Promotion 的本地化字符串。
         /// </summary>
         public static string menuPromotion {

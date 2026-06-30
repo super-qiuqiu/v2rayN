@@ -1239,6 +1239,9 @@
   <data name="menuProfileAutofitColumnWidth" xml:space="preserve">
     <value>تنظیم خودکار عرض ستون</value>
   </data>
+  <data name="menuProfileColumnSettings" xml:space="preserve">
+    <value>تنظیمات ستون</value>
+  </data>
   <data name="menuExport2ShareUrlBase64" xml:space="preserve">
     <value>صادر کردن پیوندهای اشتراک گذاری کدگذاری شده با Base64 به کلیپ بورد</value>
   </data>

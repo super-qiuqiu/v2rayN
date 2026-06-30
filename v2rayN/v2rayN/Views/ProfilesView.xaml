@@ -79,6 +79,17 @@
                 </Button>
 
                 <Button
+                    x:Name="btnColumnSettings"
+                    Width="30"
+                    Height="30"
+                    Margin="{StaticResource MarginLeftRight4}"
+                    AutomationProperties.Name="{x:Static resx:ResUI.menuProfileColumnSettings}"
+                    Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}"
+                    ToolTip="{x:Static resx:ResUI.menuProfileColumnSettings}">
+                    <materialDesign:PackIcon VerticalAlignment="Center" Kind="SettingsOutline" />
+                </Button>
+
+                <Button
                     x:Name="btnFastRealPing"
                     Width="30"
                     Height="30"

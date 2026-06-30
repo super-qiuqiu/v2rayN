@@ -1245,6 +1245,9 @@
   <data name="menuProfileAutofitColumnWidth" xml:space="preserve">
     <value>自动调整列宽</value>
   </data>
+  <data name="menuProfileColumnSettings" xml:space="preserve">
+    <value>列设置</value>
+  </data>
   <data name="menuExport2ShareUrlBase64" xml:space="preserve">
     <value>导出分享链接至剪贴板 (多选) Base64 编码</value>
   </data>

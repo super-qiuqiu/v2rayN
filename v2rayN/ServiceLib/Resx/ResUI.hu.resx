@@ -1239,6 +1239,9 @@
   <data name="menuProfileAutofitColumnWidth" xml:space="preserve">
     <value>Oszlopszélesség automatikus beállítása</value>
   </data>
+  <data name="menuProfileColumnSettings" xml:space="preserve">
+    <value>Oszlopbeállítások</value>
+  </data>
   <data name="menuExport2ShareUrlBase64" xml:space="preserve">
     <value>Base64-kódolt megosztási linkek exportálása vágólapra</value>
   </data>

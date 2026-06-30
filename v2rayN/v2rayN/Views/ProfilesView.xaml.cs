@@ -20,6 +20,7 @@ public partial class ProfilesView
         _config = AppManager.Instance.Config;
 
         btnAutofitColumnWidth.Click += BtnAutofitColumnWidth_Click;
+        btnColumnSettings.Click += BtnColumnSettings_Click;
         txtServerFilter.PreviewKeyDown += TxtServerFilter_PreviewKeyDown;
         lstProfiles.PreviewKeyDown += LstProfiles_PreviewKeyDown;
         lstProfiles.SelectionChanged += LstProfiles_SelectionChanged;
@@ -328,6 +329,106 @@ public partial class ProfilesView
     private void BtnAutofitColumnWidth_Click(object sender, RoutedEventArgs e)
     {
         AutofitColumnWidth();
+    }
+
+    private void BtnColumnSettings_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var contextMenu = new ContextMenu
+            {
+                PlacementTarget = btnColumnSettings,
+                Placement = PlacementMode.Bottom,
+                Style = TryFindResource("DefContextMenu") as Style
+            };
+
+            foreach (var column in lstProfiles.Columns.Cast<MyDGTextColumn>().OrderBy(t => t.DisplayIndex))
+            {
+                var menuItem = new MenuItem
+                {
+                    Header = GetColumnHeaderText(column),
+                    IsCheckable = true,
+                    IsChecked = column.Visibility == Visibility.Visible,
+                    IsEnabled = column.Visibility == Visibility.Visible || CanShowColumn(column.ExName),
+                    StaysOpenOnClick = true,
+                    Tag = column
+                };
+                if (TryFindResource("MenuItemHeight") is double height)
+                {
+                    menuItem.Height = height;
+                }
+                menuItem.Click += ColumnSettingsMenuItem_Click;
+
+                contextMenu.Items.Add(menuItem);
+            }
+
+            btnColumnSettings.ContextMenu = contextMenu;
+            contextMenu.IsOpen = true;
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+        }
+    }
+
+    private void ColumnSettingsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (sender is not MenuItem menuItem || menuItem.Tag is not MyDGTextColumn column)
+            {
+                return;
+            }
+
+            var visible = menuItem.IsChecked;
+            if (!visible && VisibleProfileColumnCount() <= 1)
+            {
+                menuItem.IsChecked = true;
+                return;
+            }
+
+            if (visible && !CanShowColumn(column.ExName))
+            {
+                menuItem.IsChecked = false;
+                return;
+            }
+
+            column.Visibility = visible ? Visibility.Visible : Visibility.Hidden;
+            if (visible && column.ActualWidth <= 0)
+            {
+                column.Width = 100;
+            }
+
+            StorageUI();
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+        }
+    }
+
+    private int VisibleProfileColumnCount()
+    {
+        return lstProfiles.Columns.Cast<MyDGTextColumn>().Count(t => t.Visibility == Visibility.Visible);
+    }
+
+    private static bool CanShowColumn(string name)
+    {
+        if (name.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
+        {
+            return _config.GuiItem.EnableStatistics;
+        }
+        if (name.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
+        {
+            return _config.SpeedTestItem.IPAPIUrl.IsNotEmpty();
+        }
+
+        return true;
+    }
+
+    private static string GetColumnHeaderText(MyDGTextColumn column)
+    {
+        return column.Header?.ToString() ?? column.ExName;
     }
 
     private void AutofitColumnWidth()

@@ -76,6 +76,31 @@
                 </Button>
 
                 <Button
+                    x:Name="btnColumnSettings"
+                    Margin="{StaticResource MarginLr4}"
+                    Classes="IconButton Success"
+                    ToolTip.Tip="{x:Static resx:ResUI.menuProfileColumnSettings}">
+                    <Button.Content>
+                        <PathIcon Data="{StaticResource SemiIconMore}">
+                            <PathIcon.RenderTransform>
+                                <RotateTransform Angle="90" />
+                            </PathIcon.RenderTransform>
+                        </PathIcon>
+                    </Button.Content>
+                    <Button.Flyout>
+                        <Flyout>
+                            <ScrollViewer MaxHeight="420">
+                                <StackPanel
+                                    x:Name="columnSettingsPanel"
+                                    MinWidth="180"
+                                    Margin="{StaticResource Margin4}"
+                                    Spacing="2" />
+                            </ScrollViewer>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Button
                     x:Name="btnFastRealPing"
                     Margin="{StaticResource MarginLr4}"
                     Classes="IconButton Success"
