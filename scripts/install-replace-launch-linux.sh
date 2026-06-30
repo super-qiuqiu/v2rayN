@@ -105,7 +105,23 @@ publish_app() {
 verify_publish_output() {
   [[ -d "$PUBLISH_DIR" ]] || die "publish dir not found: $PUBLISH_DIR"
   [[ -x "$PUBLISH_DIR/v2rayN" ]] || die "published executable not found: $PUBLISH_DIR/v2rayN"
+  [[ -f "$PUBLISH_DIR/v2rayN.dll" ]] || die "published v2rayN.dll not found"
   [[ -f "$PUBLISH_DIR/ServiceLib.dll" ]] || die "published ServiceLib.dll not found"
+}
+
+verify_installed_output() {
+  log "Verifying installed app files"
+
+  [[ -x "$INSTALL_DIR/v2rayN" ]] || die "installed executable not found: $INSTALL_DIR/v2rayN"
+  [[ -f "$INSTALL_DIR/v2rayN.dll" ]] || die "installed v2rayN.dll not found"
+  [[ -f "$INSTALL_DIR/ServiceLib.dll" ]] || die "installed ServiceLib.dll not found"
+
+  cmp -s "$PUBLISH_DIR/v2rayN" "$INSTALL_DIR/v2rayN" \
+    || die "installed executable differs from publish output: $INSTALL_DIR/v2rayN"
+  cmp -s "$PUBLISH_DIR/v2rayN.dll" "$INSTALL_DIR/v2rayN.dll" \
+    || die "installed v2rayN.dll differs from publish output: $INSTALL_DIR/v2rayN.dll"
+  cmp -s "$PUBLISH_DIR/ServiceLib.dll" "$INSTALL_DIR/ServiceLib.dll" \
+    || die "installed ServiceLib.dll differs from publish output: $INSTALL_DIR/ServiceLib.dll"
 }
 
 stop_processes() {
@@ -246,8 +262,9 @@ main() {
   find_paths
   publish_app
   verify_publish_output
-  stop_processes
   install_app
+  verify_installed_output
+  stop_processes
   start_app
   log "Done"
 }
