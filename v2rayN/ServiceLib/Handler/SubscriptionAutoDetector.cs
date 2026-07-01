@@ -7,13 +7,108 @@ public sealed record SubscriptionDetectResult(
     int ShareLinkCount,
     int InnerLinkCount,
     int CustomConfigCount,
-    bool IsErrorResponse);
+    bool IsErrorResponse)
+{
+    public int TotalNodeCount => ShareLinkCount + InnerLinkCount + CustomConfigCount;
+}
+
+/// <summary>
+/// User-Agent protocol family. Subscription servers often return different content
+/// depending on which UA family is used (e.g. share-link base64 vs Clash YAML).
+/// </summary>
+public enum UserAgentFamily
+{
+    Unknown,
+    ShareLink,
+    Clash,
+    SingBox,
+}
 
 public static class SubscriptionAutoDetector
 {
     private const string DefaultUserAgentCacheValue = "<default>";
 
     private static readonly ConcurrentDictionary<string, string> _preferredUserAgentCache = new();
+
+    // ── UA family classification ──────────────────────────────────────
+
+    private static readonly Dictionary<string, UserAgentFamily> _uaFamilyMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // ShareLink family: servers typically return base64 share links or per-line URIs
+        ["v2rayN"] = UserAgentFamily.ShareLink,
+        ["Shadowrocket"] = UserAgentFamily.ShareLink,
+        ["SagerNet"] = UserAgentFamily.ShareLink,
+        ["Quantumult X"] = UserAgentFamily.ShareLink,
+        ["Surge"] = UserAgentFamily.ShareLink,
+        ["Loon"] = UserAgentFamily.ShareLink,
+        ["NekoBox"] = UserAgentFamily.ShareLink,
+
+        // Clash family: servers typically return Clash/Mihomo YAML configs
+        ["ClashMetaForAndroid"] = UserAgentFamily.Clash,
+        ["ClashforWindows"] = UserAgentFamily.Clash,
+        ["clash-verge"] = UserAgentFamily.Clash,
+        ["clash.meta"] = UserAgentFamily.Clash,
+        ["Stash"] = UserAgentFamily.Clash,
+
+        // SingBox family
+        ["sing-box"] = UserAgentFamily.SingBox,
+    };
+
+    // Representative UA for cross-family probing (most likely to get full content)
+    private static readonly Dictionary<UserAgentFamily, string> _familyRepresentatives = new()
+    {
+        [UserAgentFamily.ShareLink] = "SagerNet",
+        [UserAgentFamily.Clash] = "clash.meta",
+        [UserAgentFamily.SingBox] = "sing-box",
+    };
+
+    /// <summary>
+    /// Classify a User-Agent into its protocol family.
+    /// Empty/default UA is treated as ShareLink family (v2rayN's native family).
+    /// </summary>
+    public static UserAgentFamily ClassifyUserAgentFamily(string? userAgent)
+    {
+        if (userAgent.IsNullOrEmpty())
+            return UserAgentFamily.ShareLink; // default UA → share-link family
+
+        return _uaFamilyMap.TryGetValue(userAgent, out var family)
+            ? family
+            : UserAgentFamily.Unknown;
+    }
+
+    /// <summary>
+    /// Get the representative UA for a given family (used for cross-family probing).
+    /// </summary>
+    public static string GetFamilyRepresentative(UserAgentFamily family)
+    {
+        return _familyRepresentatives.TryGetValue(family, out var ua)
+            ? ua
+            : string.Empty;
+    }
+
+    /// <summary>
+    /// Get the cross-probe UA: one representative from each family that differs from
+    /// the cached UA's family. Returns empty if the cached family is unknown
+    /// (in which case full candidate traversal is needed).
+    /// </summary>
+    public static string GetCrossProbeUserAgent(string? cachedUserAgent)
+    {
+        var cachedFamily = ClassifyUserAgentFamily(cachedUserAgent);
+        if (cachedFamily == UserAgentFamily.Unknown)
+            return string.Empty; // unknown family → will fall through to full traversal
+
+        // Pick the most "different" family to probe.
+        // Priority: Clash > SingBox > ShareLink (Clash configs tend to have the most nodes)
+        var probeFamily = cachedFamily switch
+        {
+            UserAgentFamily.ShareLink => UserAgentFamily.Clash,
+            UserAgentFamily.Clash => UserAgentFamily.ShareLink,
+            UserAgentFamily.SingBox => UserAgentFamily.Clash,
+            _ => UserAgentFamily.Clash,
+        };
+
+        return GetFamilyRepresentative(probeFamily);
+    }
 
     public static bool IsAutoUserAgent(string? userAgent)
     {
@@ -68,7 +163,10 @@ public static class SubscriptionAutoDetector
         var innerLinkCount = CountInnerLinks(normalizedContent);
         var customConfigCount = CountCustomConfigs(normalizedContent);
         var isErrorResponse = IsLikelyErrorResponse(normalizedContent);
-        var score = isErrorResponse ? -1 : shareLinkCount * 100 + innerLinkCount * 90 + customConfigCount;
+        // Weight customConfigCount by 90 so multi-node configs (e.g. Clash with many proxies)
+        // are not unfairly beaten by a small share-link list. A single custom config still
+        // scores slightly below an equivalent clean share link (90 < 100).
+        var score = isErrorResponse ? -1 : shareLinkCount * 100 + innerLinkCount * 90 + customConfigCount * 90;
 
         return new SubscriptionDetectResult(
             userAgent,
@@ -217,14 +315,44 @@ public static class SubscriptionAutoDetector
             return count;
         }
 
+        // Try to count proxies in Clash config
+        if (LooksLikeClashConfig(content))
+        {
+            var clashProxyCount = CountClashProxies(content);
+            if (clashProxyCount > 0)
+            {
+                return clashProxyCount;
+            }
+            return 1;
+        }
+
         if (LooksLikeSingboxConfig(content)
             || LooksLikeV2rayConfig(content)
-            || LooksLikeClashConfig(content)
             || LooksLikeHysteria2Config(content))
         {
             return 1;
         }
 
+        return 0;
+    }
+
+    private static int CountClashProxies(string content)
+    {
+        try
+        {
+            var clashConfig = YamlUtils.FromYaml<Dictionary<string, object>>(content);
+            if (clashConfig != null && clashConfig.TryGetValue("proxies", out var proxiesObj))
+            {
+                if (proxiesObj is List<object> proxiesList)
+                {
+                    return proxiesList.Count;
+                }
+            }
+        }
+        catch
+        {
+            // If YAML parsing fails, fall back to simple detection
+        }
         return 0;
     }
 

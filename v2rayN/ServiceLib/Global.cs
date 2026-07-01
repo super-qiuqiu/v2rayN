@@ -235,7 +235,8 @@ public class Global
         { EConfigType.TUIC, "tuic://" },
         { EConfigType.WireGuard, "wireguard://" },
         { EConfigType.Anytls, "anytls://" },
-        { EConfigType.Naive, "naive://" }
+        { EConfigType.Naive, "naive://" },
+        { EConfigType.Mieru, "mieru://" }
     };
 
     public static readonly Dictionary<EConfigType, string> ProtocolTypes = new()
@@ -250,7 +251,8 @@ public class Global
         { EConfigType.TUIC, "tuic" },
         { EConfigType.WireGuard, "wireguard" },
         { EConfigType.Anytls, "anytls" },
-        { EConfigType.Naive, "naive" }
+        { EConfigType.Naive, "naive" },
+        { EConfigType.Mieru, "mieru" }
     };
 
     public static readonly List<string> VmessSecurities =
@@ -349,7 +351,8 @@ public class Global
     public static readonly List<string> CoreTypes =
     [
         "Xray",
-        "sing_box"
+        "sing_box",
+        "mihomo"
     ];
 
     public static readonly HashSet<EConfigType> XraySupportConfigType =
@@ -379,7 +382,28 @@ public class Global
         EConfigType.HTTP,
     ];
 
+    public static readonly HashSet<EConfigType> MihomoSupportConfigType =
+    [
+        EConfigType.VMess,
+        EConfigType.VLESS,
+        EConfigType.Shadowsocks,
+        EConfigType.Trojan,
+        EConfigType.Hysteria2,
+        EConfigType.WireGuard,
+        EConfigType.SOCKS,
+        EConfigType.HTTP,
+        EConfigType.Mieru,
+    ];
+
     public static readonly HashSet<EConfigType> SingboxOnlyConfigType = SingboxSupportConfigType.Except(XraySupportConfigType).ToHashSet();
+
+    public static HashSet<EConfigType> GetSupportedConfigTypes(ECoreType coreType) => coreType switch
+    {
+        ECoreType.sing_box => SingboxSupportConfigType,
+        ECoreType.Xray => XraySupportConfigType,
+        ECoreType.mihomo => MihomoSupportConfigType,
+        _ => [],
+    };
 
     public static readonly List<string> DomainStrategies =
     [

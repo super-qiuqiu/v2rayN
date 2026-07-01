@@ -18,6 +18,8 @@ public class SubItem
 
     public string? DetectedUserAgent { get; set; }
 
+    public int? DetectedNodeCount { get; set; }
+
     public int Sort { get; set; }
 
     public string? Filter { get; set; }

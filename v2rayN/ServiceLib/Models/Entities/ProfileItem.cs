@@ -112,6 +112,14 @@ public class ProfileItem
                 }
 
                 break;
+
+            case EConfigType.Mieru:
+                if (Password.IsNullOrEmpty())
+                {
+                    return false;
+                }
+
+                break;
         }
 
         if ((ConfigType is EConfigType.VLESS or EConfigType.Trojan)

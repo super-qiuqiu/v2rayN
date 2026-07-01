@@ -316,9 +316,37 @@ public partial class CoreConfigSingboxService
                         outbound.udp_over_tcp = protocolExtra.Uot == true ? true : null;
                         break;
                     }
+                case EConfigType.Mieru:
+                    {
+                        outbound.username = _node.Username;
+                        outbound.password = _node.Password;
+                        if (protocolExtra.MieruTransport.IsNotEmpty())
+                        {
+                            outbound.mieru_transport = protocolExtra.MieruTransport.ToLowerInvariant();
+                        }
+                        if (protocolExtra.MieruMultiplexing.IsNotEmpty())
+                        {
+                            outbound.multiplexing = protocolExtra.MieruMultiplexing;
+                        }
+                        if (protocolExtra.MieruPortRange.IsNotEmpty())
+                        {
+                            outbound.server_ports = [protocolExtra.MieruPortRange];
+                        }
+                        if (protocolExtra.MieruTrafficPattern.IsNotEmpty())
+                        {
+                            outbound.traffic_pattern = protocolExtra.MieruTrafficPattern;
+                        }
+                        break;
+                    }
             }
 
             FillOutboundTls(outbound);
+
+            // Mieru: clear inherited transport object since mieru uses string "transport"
+            if (_node.ConfigType == EConfigType.Mieru && outbound.mieru_transport.IsNotEmpty())
+            {
+                outbound.transport = null;
+            }
         }
         catch (Exception ex)
         {

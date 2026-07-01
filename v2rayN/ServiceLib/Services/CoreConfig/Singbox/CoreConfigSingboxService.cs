@@ -173,8 +173,18 @@ public partial class CoreConfigSingboxService(CoreConfigContext context)
 
             ApplyOutboundBindInterface();
             ApplyOutboundSendThrough();
+
+            var json = JsonUtils.Serialize(_coreConfig);
+
+            // Post-process: inject mieru-specific fields that conflict with inherited types
+            // sing-box mieru outbound uses "transport" as a string ("tcp"/"udp"), not a Transport object
+            if (_node.ConfigType == EConfigType.Mieru)
+            {
+                json = PostProcessMieruOutbound(json);
+            }
+
             ret.Success = true;
-            ret.Data = JsonUtils.Serialize(_coreConfig);
+            ret.Data = json;
             return ret;
         }
         catch (Exception ex)
@@ -248,4 +258,85 @@ public partial class CoreConfigSingboxService(CoreConfigContext context)
     }
 
     #endregion public gen function
+
+    #region mieru post-process
+
+    /// <summary>
+    /// Post-process JSON to inject mieru-specific "transport" string field.
+    /// In sing-box mieru outbound, "transport" is a string ("tcp"/"udp"),
+    /// not the Transport4Sbox object used by other outbound types.
+    /// We strip any existing transport object and inject the string value.
+    /// </summary>
+    private string PostProcessMieruOutbound(string json)
+    {
+        try
+        {
+            var protocolExtra = _node.GetProtocolExtra();
+            var transportStr = protocolExtra.MieruTransport?.ToLowerInvariant() ?? "tcp";
+            var multiplexing = protocolExtra.MieruMultiplexing ?? "MULTIPLEXING_LOW";
+
+            // Find the proxy outbound and inject/replace transport string
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var outbounds = root.GetProperty("outbounds");
+            var outArr = new List<Dictionary<string, object?>>();
+            foreach (var ob in outbounds.EnumerateArray())
+            {
+                var dict = new Dictionary<string, object?>();
+                foreach (var prop in ob.EnumerateObject())
+                {
+                    if (prop.Name == "transport")
+                    {
+                        // Replace with mieru string value
+                        dict["transport"] = transportStr;
+                        continue;
+                    }
+                    dict[prop.Name] = prop.Value.ValueKind == System.Text.Json.JsonValueKind.String
+                        ? prop.Value.GetString()
+                        : prop.Value.ValueKind == System.Text.Json.JsonValueKind.Number
+                            ? prop.Value.TryGetInt64(out var lng) ? (object?)lng : prop.Value.GetDouble()
+                            : prop.Value.ValueKind == System.Text.Json.JsonValueKind.True || prop.Value.ValueKind == System.Text.Json.JsonValueKind.False
+                                ? prop.Value.GetBoolean()
+                                : (object?)System.Text.Json.JsonSerializer.Deserialize<object?>(prop.Value.GetRawText());
+                }
+                // Ensure multiplexing and traffic_pattern are set for proxy outbound
+                if (dict.TryGetValue("type", out var typeVal) && typeVal?.ToString() == "mieru")
+                {
+                    dict["multiplexing"] = multiplexing;
+                    if (protocolExtra.MieruTrafficPattern.IsNotEmpty())
+                    {
+                        dict["traffic_pattern"] = protocolExtra.MieruTrafficPattern;
+                    }
+                }
+                outArr.Add(dict);
+            }
+
+            // Re-serialize with outbounds replaced
+            var resultDict = new Dictionary<string, object?>();
+            foreach (var prop in root.EnumerateObject())
+            {
+                if (prop.Name == "outbounds")
+                {
+                    resultDict["outbounds"] = outArr;
+                }
+                else
+                {
+                    resultDict[prop.Name] = System.Text.Json.JsonSerializer.Deserialize<object?>(prop.Value.GetRawText());
+                }
+            }
+
+            return System.Text.Json.JsonSerializer.Serialize(resultDict, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+            });
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return json; // fallback: return original JSON
+        }
+    }
+
+    #endregion mieru post-process
 }

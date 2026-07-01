@@ -42,6 +42,12 @@ public record ProtocolExtraItem
     public int? InsecureConcurrency { get; init; }
     public bool? NaiveQuic { get; init; }
 
+    // mieru
+    public string? MieruTransport { get; init; }       // TCP or UDP
+    public string? MieruMultiplexing { get; init; }   // MULTIPLEXING_OFF/LOW/MIDDLE/HIGH
+    public string? MieruPortRange { get; init; }       // e.g. "2090-2099"
+    public string? MieruTrafficPattern { get; init; }  // base64 string
+
     // group profile
     public string? GroupType { get; init; }
     public string? ChildItems { get; init; }

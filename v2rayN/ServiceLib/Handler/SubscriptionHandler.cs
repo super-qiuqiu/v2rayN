@@ -155,25 +155,109 @@ public static class SubscriptionHandler
 
     private static async Task<string> DownloadSubscriptionContentAuto(DownloadService downloadHandle, string url, bool blProxy, SubItem item, bool persistDetectedUserAgent, string hashCode, Func<bool, string, Task> updateFunc)
     {
+        // Restore in-memory cache from persisted DetectedUserAgent
         if (persistDetectedUserAgent && item.DetectedUserAgent.IsNotEmpty())
         {
             SubscriptionAutoDetector.SavePreferredUserAgent(url, SubscriptionAutoDetector.FromPersistedUserAgent(item.DetectedUserAgent), item.Filter);
         }
 
-        if (SubscriptionAutoDetector.TryGetPreferredUserAgent(url, item.Filter, out var preferredUserAgent))
+        // ── Cached UA path with cross-family probe ────────────────────
+        if (SubscriptionAutoDetector.TryGetPreferredUserAgent(url, item.Filter, out var cachedUserAgent))
         {
-            var preferredResult = await DownloadSubscriptionContent(downloadHandle, url, blProxy, preferredUserAgent);
-            if (preferredResult.IsNotEmpty())
+            return await DownloadWithCrossProbe(downloadHandle, url, blProxy, item, persistDetectedUserAgent, hashCode, updateFunc, cachedUserAgent);
+        }
+
+        // ── No cache: full candidate traversal ───────────────────────
+        return await DownloadWithFullTraversal(downloadHandle, url, blProxy, item, persistDetectedUserAgent, hashCode, updateFunc);
+    }
+
+    /// <summary>
+    /// Cached UA path: download with cached UA and cross-probe one representative
+    /// from a different protocol family in parallel, then pick the best.
+    /// </summary>
+    private static async Task<string> DownloadWithCrossProbe(
+        DownloadService downloadHandle, string url, bool blProxy, SubItem item,
+        bool persistDetectedUserAgent, string hashCode, Func<bool, string, Task> updateFunc,
+        string cachedUserAgent)
+    {
+        var crossProbeUA = SubscriptionAutoDetector.GetCrossProbeUserAgent(cachedUserAgent);
+
+        // Launch both downloads in parallel
+        var cachedTask = DownloadSubscriptionContent(downloadHandle, url, blProxy, cachedUserAgent);
+        var crossProbeTask = crossProbeUA.IsNotEmpty()
+            ? DownloadSubscriptionContent(downloadHandle, url, blProxy, crossProbeUA)
+            : Task.FromResult(string.Empty);
+
+        await Task.WhenAll(cachedTask, crossProbeTask);
+
+        var cachedResult = await cachedTask;
+        var crossProbeResult = await crossProbeTask;
+
+        // Score the cached result
+        var cachedDetect = cachedResult.IsNotEmpty()
+            ? SubscriptionAutoDetector.Detect(cachedUserAgent, cachedResult, item.Filter)
+            : null;
+
+        // Score the cross-probe result
+        var crossProbeDetect = crossProbeResult.IsNotEmpty()
+            ? SubscriptionAutoDetector.Detect(crossProbeUA, crossProbeResult, item.Filter)
+            : null;
+
+        // Pick the best result
+        SubscriptionDetectResult? bestResult = null;
+        string bestContent = string.Empty;
+
+        if (cachedDetect != null && cachedDetect.Score > 0)
+        {
+            bestResult = cachedDetect;
+            bestContent = cachedResult;
+        }
+
+        if (crossProbeDetect != null && crossProbeDetect.Score > 0
+            && (bestResult == null || crossProbeDetect.Score > bestResult.Score))
+        {
+            bestResult = crossProbeDetect;
+            bestContent = crossProbeResult;
+        }
+
+        if (bestResult == null)
+        {
+            // Both failed; fall through to full traversal
+            return await DownloadWithFullTraversal(downloadHandle, url, blProxy, item, persistDetectedUserAgent, hashCode, updateFunc);
+        }
+
+        // Log results
+        var cachedNodeCount = cachedDetect?.TotalNodeCount ?? 0;
+        var crossProbeNodeCount = crossProbeDetect?.TotalNodeCount ?? 0;
+        await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent cached {DisplayAutoUserAgent(cachedUserAgent)} ({cachedNodeCount} nodes)");
+        if (crossProbeUA.IsNotEmpty() && crossProbeDetect != null)
+        {
+            await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent cross-probe {DisplayAutoUserAgent(crossProbeUA)} ({crossProbeNodeCount} nodes)");
+        }
+
+        // Update cache if cross-probe won (or first time persisting)
+        if (bestResult.UserAgent != cachedUserAgent || item.DetectedNodeCount != bestResult.TotalNodeCount)
+        {
+            SubscriptionAutoDetector.SavePreferredUserAgent(url, bestResult.UserAgent, item.Filter);
+            if (persistDetectedUserAgent)
             {
-                var preferredDetectResult = SubscriptionAutoDetector.Detect(preferredUserAgent, preferredResult, item.Filter);
-                if (preferredDetectResult.Score > 0)
-                {
-                    await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent cached {DisplayAutoUserAgent(preferredUserAgent)} ({preferredDetectResult.ShareLinkCount} nodes)");
-                    return preferredResult;
-                }
+                item.DetectedUserAgent = SubscriptionAutoDetector.ToPersistedUserAgent(bestResult.UserAgent);
+                item.DetectedNodeCount = bestResult.TotalNodeCount;
+                await SQLiteHelper.Instance.UpdateAsync(item);
             }
         }
 
+        await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent selected {DisplayAutoUserAgent(bestResult.UserAgent)} ({bestResult.TotalNodeCount} nodes)");
+        return bestContent;
+    }
+
+    /// <summary>
+    /// No-cache path: try all candidate UAs sequentially and pick the best.
+    /// </summary>
+    private static async Task<string> DownloadWithFullTraversal(
+        DownloadService downloadHandle, string url, bool blProxy, SubItem item,
+        bool persistDetectedUserAgent, string hashCode, Func<bool, string, Task> updateFunc)
+    {
         SubscriptionDetectResult? bestResult = null;
         var triedUserAgents = new HashSet<string>();
 
@@ -197,7 +281,7 @@ public static class SubscriptionHandler
                 bestResult = detectResult;
             }
 
-            await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent {DisplayAutoUserAgent(userAgent)}: {detectResult.ShareLinkCount} nodes");
+            await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent {DisplayAutoUserAgent(userAgent)}: {detectResult.TotalNodeCount} nodes");
         }
 
         if (bestResult == null)
@@ -211,11 +295,12 @@ public static class SubscriptionHandler
             if (persistDetectedUserAgent)
             {
                 item.DetectedUserAgent = SubscriptionAutoDetector.ToPersistedUserAgent(bestResult.UserAgent);
+                item.DetectedNodeCount = bestResult.TotalNodeCount;
                 await SQLiteHelper.Instance.UpdateAsync(item);
             }
         }
 
-        await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent selected {DisplayAutoUserAgent(bestResult.UserAgent)} ({bestResult.ShareLinkCount} nodes)");
+        await updateFunc?.Invoke(false, $"{hashCode}Auto User-Agent selected {DisplayAutoUserAgent(bestResult.UserAgent)} ({bestResult.TotalNodeCount} nodes)");
         return bestResult.Content;
     }
 

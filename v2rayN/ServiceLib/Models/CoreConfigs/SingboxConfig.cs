@@ -145,13 +145,22 @@ public class Outbound4Sbox : BaseServer4Sbox
     public bool? quic { get; set; }
     public string? quic_congestion_control { get; set; }
     public string? version { get; set; }
-    public string? network { get; set; }
+    [JsonIgnore]
+    public string? network { get; set; }  // kept for internal use
     public string? packet_encoding { get; set; }
     public string? plugin { get; set; }
     public string? plugin_opts { get; set; }
     public List<string>? outbounds { get; set; }
     public bool? interrupt_exist_connections { get; set; }
     public int? tolerance { get; set; }
+
+    // mieru specialized fields
+    // In mieru outbounds, "transport" is a string ("tcp"/"udp") not a Transport object.
+    // We store it separately and inject during serialization.
+    [JsonIgnore]
+    public string? mieru_transport { get; set; }
+    public string? multiplexing { get; set; }
+    public string? traffic_pattern { get; set; }
 }
 
 public class Endpoints4Sbox : BaseServer4Sbox
