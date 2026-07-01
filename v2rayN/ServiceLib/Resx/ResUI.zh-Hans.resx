@@ -1368,6 +1368,12 @@
   <data name="TbSettingsHide2TrayWhenClose" xml:space="preserve">
     <value>关闭窗口时隐藏至托盘</value>
   </data>
+  <data name="TbSettingsSpeedPingTestCount" xml:space="preserve">
+    <value>真连接请求次数</value>
+  </data>
+  <data name="TbSettingsSpeedPingFetchIPInfo" xml:space="preserve">
+    <value>真连接后获取 IP 信息</value>
+  </data>
   <data name="TbSettingsMixedConcurrencyCount" xml:space="preserve">
     <value>多线程测试时的并发数量</value>
   </data>

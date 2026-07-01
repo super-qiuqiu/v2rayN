@@ -48,25 +48,16 @@ public class NodeValidator
 
         // Network & Core Logic
         var net = item.GetNetwork();
-        if (coreType == ECoreType.sing_box)
+        var supportedConfigTypes = Global.GetSupportedConfigTypes(coreType);
+        if (supportedConfigTypes.Count > 0 && !supportedConfigTypes.Contains(item.ConfigType))
         {
-            var transportError = ValidateSingboxTransport(item.ConfigType, net);
-            if (transportError != null)
-            {
-                v.Error(transportError);
-            }
-
-            if (!Global.SingboxSupportConfigType.Contains(item.ConfigType))
-            {
-                v.Error(string.Format(ResUI.MsgCoreNotSupportProtocol, nameof(ECoreType.sing_box), item.ConfigType));
-            }
+            v.Error(string.Format(ResUI.MsgCoreNotSupportProtocol, coreType, item.ConfigType));
         }
-        else if (coreType is ECoreType.Xray)
+
+        var transportError = ValidateCoreTransport(coreType, item.ConfigType, net);
+        if (transportError != null)
         {
-            if (!Global.XraySupportConfigType.Contains(item.ConfigType))
-            {
-                v.Error(string.Format(ResUI.MsgCoreNotSupportProtocol, nameof(ECoreType.Xray), item.ConfigType));
-            }
+            v.Error(transportError);
         }
 
         // Protocol Specifics
@@ -165,26 +156,43 @@ public class NodeValidator
         }
     }
 
-    private static string? ValidateSingboxTransport(EConfigType configType, string net)
+    private static string? ValidateCoreTransport(ECoreType coreType, EConfigType configType, string net)
     {
-        // sing-box does not support xhttp / kcp transports
+        if (coreType is not (ECoreType.sing_box or ECoreType.mihomo))
+        {
+            return null;
+        }
+
+        // sing-box/mihomo do not support xhttp / kcp transports in this generated-config path.
         if (SingboxUnsupportedTransports.Contains(net))
         {
-            return string.Format(ResUI.MsgCoreNotSupportNetwork, nameof(ECoreType.sing_box), net);
+            return string.Format(ResUI.MsgCoreNotSupportNetwork, coreType, net);
         }
 
-        // sing-box does not support non-tcp transports for protocols other than vmess/trojan/vless/shadowsocks
-        if (!SingboxTransportSupportedProtocols.Contains(configType) && net != nameof(ETransport.raw))
+        if (coreType == ECoreType.sing_box)
         {
-            return string.Format(ResUI.MsgCoreNotSupportProtocolTransport,
-                nameof(ECoreType.sing_box), configType.ToString(), net);
-        }
+            // sing-box does not support non-raw transports for protocols other than vmess/trojan/vless/shadowsocks.
+            if (!SingboxTransportSupportedProtocols.Contains(configType) && net != nameof(ETransport.raw))
+            {
+                return string.Format(ResUI.MsgCoreNotSupportProtocolTransport,
+                    coreType, configType.ToString(), net);
+            }
 
-        // sing-box shadowsocks only supports tcp/ws/quic transports
-        if (configType == EConfigType.Shadowsocks && !SingboxShadowsocksAllowedTransports.Contains(net))
+            // sing-box shadowsocks only supports tcp/ws transports in this path.
+            if (configType == EConfigType.Shadowsocks && !SingboxShadowsocksAllowedTransports.Contains(net))
+            {
+                return string.Format(ResUI.MsgCoreNotSupportProtocolTransport,
+                    coreType, configType.ToString(), net);
+            }
+        }
+        else if (coreType == ECoreType.mihomo)
         {
-            return string.Format(ResUI.MsgCoreNotSupportProtocolTransport,
-                nameof(ECoreType.sing_box), configType.ToString(), net);
+            // mihomo's mieru proxy has its own transport field (TCP/UDP), not v2ray-style transports.
+            if (configType == EConfigType.Mieru && net != nameof(ETransport.raw))
+            {
+                return string.Format(ResUI.MsgCoreNotSupportProtocolTransport,
+                    coreType, configType.ToString(), net);
+            }
         }
 
         return null;

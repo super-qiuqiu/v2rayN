@@ -64,6 +64,8 @@ public class OptionSettingViewModel : MyReactiveObject
     [Reactive] public int SpeedTestTimeout { get; set; }
     [Reactive] public string SpeedTestUrl { get; set; }
     [Reactive] public string SpeedPingTestUrl { get; set; }
+    [Reactive] public int SpeedPingTestCount { get; set; }
+    [Reactive] public bool SpeedPingFetchIPInfo { get; set; }
     [Reactive] public string UdpTestTarget { get; set; }
     [Reactive] public int MixedConcurrencyCount { get; set; }
     [Reactive] public bool EnableHWA { get; set; }
@@ -117,7 +119,11 @@ public class OptionSettingViewModel : MyReactiveObject
     [Reactive] public string CoreType5 { get; set; }
     [Reactive] public string CoreType6 { get; set; }
     [Reactive] public string CoreType7 { get; set; }
+    [Reactive] public string CoreType8 { get; set; }
     [Reactive] public string CoreType9 { get; set; }
+    [Reactive] public string CoreType11 { get; set; }
+    [Reactive] public string CoreType12 { get; set; }
+    [Reactive] public string CoreType14 { get; set; }
 
     #endregion CoreType
 
@@ -211,6 +217,8 @@ public class OptionSettingViewModel : MyReactiveObject
         SpeedTestUrl = _config.SpeedTestItem.SpeedTestUrl;
         MixedConcurrencyCount = _config.SpeedTestItem.MixedConcurrencyCount;
         SpeedPingTestUrl = _config.SpeedTestItem.SpeedPingTestUrl;
+        SpeedPingTestCount = _config.SpeedTestItem.SpeedPingTestCount;
+        SpeedPingFetchIPInfo = _config.SpeedTestItem.SpeedPingFetchIPInfo ?? true;
         UdpTestTarget = _config.SpeedTestItem.UdpTestTarget;
         EnableHWA = _config.GuiItem.EnableHWA;
         SubConvertUrl = _config.ConstItem.SubConvertUrl;
@@ -262,7 +270,12 @@ public class OptionSettingViewModel : MyReactiveObject
             _config.CoreTypeItem.Add(new CoreTypeItem()
             {
                 ConfigType = it,
-                CoreType = ECoreType.Xray
+                CoreType = it switch
+                {
+                    EConfigType.Mieru => ECoreType.mihomo,
+                    _ when Global.SingboxOnlyConfigType.Contains(it) => ECoreType.sing_box,
+                    _ => ECoreType.Xray,
+                }
             });
         }
         _config.CoreTypeItem.ForEach(it =>
@@ -298,8 +311,24 @@ public class OptionSettingViewModel : MyReactiveObject
                     CoreType7 = type;
                     break;
 
+                case 8: // TUIC
+                    CoreType8 = type;
+                    break;
+
                 case 9:
                     CoreType9 = type;
+                    break;
+
+                case 11: // Anytls
+                    CoreType11 = type;
+                    break;
+
+                case 12: // Naive
+                    CoreType12 = type;
+                    break;
+
+                case 14: // Mieru
+                    CoreType14 = type;
                     break;
             }
         });
@@ -401,6 +430,8 @@ public class OptionSettingViewModel : MyReactiveObject
         _config.SpeedTestItem.MixedConcurrencyCount = MixedConcurrencyCount;
         _config.SpeedTestItem.SpeedTestUrl = SpeedTestUrl;
         _config.SpeedTestItem.SpeedPingTestUrl = SpeedPingTestUrl;
+        _config.SpeedTestItem.SpeedPingTestCount = Math.Clamp(SpeedPingTestCount, 1, 3);
+        _config.SpeedTestItem.SpeedPingFetchIPInfo = SpeedPingFetchIPInfo;
         _config.SpeedTestItem.UdpTestTarget = UdpTestTarget;
         _config.GuiItem.EnableHWA = EnableHWA;
         _config.ConstItem.SubConvertUrl = SubConvertUrl;
@@ -480,8 +511,24 @@ public class OptionSettingViewModel : MyReactiveObject
                     type = CoreType7;
                     break;
 
+                case 8: // TUIC
+                    type = CoreType8;
+                    break;
+
                 case 9:
                     type = CoreType9;
+                    break;
+
+                case 11: // Anytls
+                    type = CoreType11;
+                    break;
+
+                case 12: // Naive
+                    type = CoreType12;
+                    break;
+
+                case 14: // Mieru
+                    type = CoreType14;
                     break;
 
                 default:

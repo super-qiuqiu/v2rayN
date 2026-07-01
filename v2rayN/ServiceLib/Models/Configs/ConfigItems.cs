@@ -156,6 +156,8 @@ public class SpeedTestItem
     public int SpeedTestTimeout { get; set; }
     public string SpeedTestUrl { get; set; }
     public string SpeedPingTestUrl { get; set; }
+    public int SpeedPingTestCount { get; set; }
+    public bool? SpeedPingFetchIPInfo { get; set; }
     public int MixedConcurrencyCount { get; set; }
     public string IPAPIUrl { get; set; }
     public string UdpTestTarget { get; set; }

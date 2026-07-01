@@ -714,13 +714,28 @@ public sealed class AppManager
 
     public ECoreType GetCoreType(ProfileItem profileItem, EConfigType eConfigType)
     {
-        if (profileItem?.CoreType != null)
+        if (profileItem?.ConfigType == EConfigType.Custom && profileItem.CoreType != null)
         {
             return (ECoreType)profileItem.CoreType;
         }
 
         var item = _config.CoreTypeItem?.FirstOrDefault(it => it.ConfigType == eConfigType);
-        return item?.CoreType ?? ECoreType.Xray;
+        if (item != null)
+        {
+            return item.CoreType;
+        }
+
+        if (profileItem?.CoreType != null)
+        {
+            return (ECoreType)profileItem.CoreType;
+        }
+
+        return eConfigType switch
+        {
+            EConfigType.Mieru => ECoreType.mihomo,
+            _ when Global.SingboxOnlyConfigType.Contains(eConfigType) => ECoreType.sing_box,
+            _ => ECoreType.Xray,
+        };
     }
 
     #endregion Core Type

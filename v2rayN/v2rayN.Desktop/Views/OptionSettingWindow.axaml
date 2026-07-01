@@ -730,6 +730,32 @@
                             IsEditable="True" />
 
                         <TextBlock
+                            Grid.Row="21"
+                            Grid.Column="0"
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
+                            Text="{x:Static resx:ResUI.TbSettingsSpeedPingTestCount}" />
+                        <ComboBox
+                            x:Name="cmbSpeedPingTestCount"
+                            Grid.Row="21"
+                            Grid.Column="1"
+                            Width="200"
+                            Margin="{StaticResource Margin4}" />
+                        <StackPanel
+                            Grid.Row="21"
+                            Grid.Column="2"
+                            Margin="{StaticResource Margin4}"
+                            Orientation="Horizontal">
+                            <ToggleSwitch
+                                x:Name="togSpeedPingFetchIPInfo"
+                                HorizontalAlignment="Left" />
+                            <TextBlock
+                                Margin="{StaticResource Margin4}"
+                                VerticalAlignment="Center"
+                                Text="{x:Static resx:ResUI.TbSettingsSpeedPingFetchIPInfo}" />
+                        </StackPanel>
+
+                        <TextBlock
                             Grid.Row="20"
                             Grid.Column="0"
                             Margin="{StaticResource Margin4}"
@@ -1076,7 +1102,7 @@
                 <Grid
                     Margin="{StaticResource Margin4}"
                     ColumnDefinitions="Auto,Auto"
-                    RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                    RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                     <TextBlock
                         Grid.Row="1"
                         Grid.Column="0"
@@ -1177,6 +1203,58 @@
                     <ComboBox
                         x:Name="cmbCoreType9"
                         Grid.Row="8"
+                        Grid.Column="1"
+                        Width="200"
+                        Margin="{StaticResource Margin4}" />
+
+                    <TextBlock
+                        Grid.Row="9"
+                        Grid.Column="0"
+                        Margin="{StaticResource Margin4}"
+                        VerticalAlignment="Center"
+                        Text="TUIC" />
+                    <ComboBox
+                        x:Name="cmbCoreType8"
+                        Grid.Row="9"
+                        Grid.Column="1"
+                        Width="200"
+                        Margin="{StaticResource Margin4}" />
+
+                    <TextBlock
+                        Grid.Row="10"
+                        Grid.Column="0"
+                        Margin="{StaticResource Margin4}"
+                        VerticalAlignment="Center"
+                        Text="Anytls" />
+                    <ComboBox
+                        x:Name="cmbCoreType11"
+                        Grid.Row="10"
+                        Grid.Column="1"
+                        Width="200"
+                        Margin="{StaticResource Margin4}" />
+
+                    <TextBlock
+                        Grid.Row="11"
+                        Grid.Column="0"
+                        Margin="{StaticResource Margin4}"
+                        VerticalAlignment="Center"
+                        Text="Naive" />
+                    <ComboBox
+                        x:Name="cmbCoreType12"
+                        Grid.Row="11"
+                        Grid.Column="1"
+                        Width="200"
+                        Margin="{StaticResource Margin4}" />
+
+                    <TextBlock
+                        Grid.Row="12"
+                        Grid.Column="0"
+                        Margin="{StaticResource Margin4}"
+                        VerticalAlignment="Center"
+                        Text="Mieru" />
+                    <ComboBox
+                        x:Name="cmbCoreType14"
+                        Grid.Row="12"
                         Grid.Column="1"
                         Width="200"
                         Margin="{StaticResource Margin4}" />

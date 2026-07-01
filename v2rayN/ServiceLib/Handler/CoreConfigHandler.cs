@@ -21,13 +21,14 @@ public static class CoreConfigHandler
                 _ => await GenerateClientCustomConfig(node, fileName)
             };
         }
-        else if (context.RunCoreType == ECoreType.sing_box)
-        {
-            result = new CoreConfigSingboxService(context).GenerateClientConfigContent();
-        }
         else
         {
-            result = new CoreConfigV2rayService(context).GenerateClientConfigContent();
+            result = context.RunCoreType switch
+            {
+                ECoreType.sing_box => new CoreConfigSingboxService(context).GenerateClientConfigContent(),
+                ECoreType.mihomo => new CoreConfigMihomoService(context).GenerateClientConfigContent(),
+                _ => new CoreConfigV2rayService(context).GenerateClientConfigContent(),
+            };
         }
         if (result.Success != true)
         {
@@ -95,6 +96,7 @@ public static class CoreConfigHandler
         var result = new RetResult();
         var dummyNode = new ProfileItem
         {
+            ConfigType = EConfigType.Custom,
             CoreType = coreType
         };
         var builderResult = await CoreConfigContextBuilder.Build(config, dummyNode);
@@ -113,7 +115,11 @@ public static class CoreConfigHandler
         {
             result = new CoreConfigSingboxService(context).GenerateClientSpeedtestConfig(selecteds);
         }
-        else if (coreType == ECoreType.Xray)
+        else if (coreType == ECoreType.mihomo)
+        {
+            result = new CoreConfigMihomoService(context).GenerateClientSpeedtestConfig(selecteds);
+        }
+        else
         {
             result = new CoreConfigV2rayService(context).GenerateClientSpeedtestConfig(selecteds);
         }
@@ -132,14 +138,12 @@ public static class CoreConfigHandler
         var port = Utils.GetFreePort(initPort + testItem.QueueNum);
         testItem.Port = port;
 
-        if (context.RunCoreType == ECoreType.sing_box)
+        result = context.RunCoreType switch
         {
-            result = new CoreConfigSingboxService(context).GenerateClientSpeedtestConfig(port);
-        }
-        else
-        {
-            result = new CoreConfigV2rayService(context).GenerateClientSpeedtestConfig(port);
-        }
+            ECoreType.sing_box => new CoreConfigSingboxService(context).GenerateClientSpeedtestConfig(port),
+            ECoreType.mihomo => new CoreConfigMihomoService(context).GenerateClientSpeedtestConfig(port, testItem),
+            _ => new CoreConfigV2rayService(context).GenerateClientSpeedtestConfig(port),
+        };
         if (result.Success != true)
         {
             return result;

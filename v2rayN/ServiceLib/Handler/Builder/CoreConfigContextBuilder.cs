@@ -34,18 +34,23 @@ public class CoreConfigContextBuilder
     public static async Task<CoreConfigContextBuilderResult> Build(Config config, ProfileItem node)
     {
         var runCoreType = AppManager.Instance.GetCoreType(node, node.ConfigType);
-        var coreType = runCoreType == ECoreType.sing_box ? ECoreType.sing_box : ECoreType.Xray;
+        var coreType = runCoreType switch
+        {
+            ECoreType.sing_box => ECoreType.sing_box,
+            ECoreType.mihomo => ECoreType.mihomo,
+            _ => ECoreType.Xray,
+        };
         var context = new CoreConfigContext
         {
             Node = node,
             RunCoreType = runCoreType,
             AllProxiesMap = [],
             AppConfig = config,
-            FullConfigTemplate = await AppManager.Instance.GetFullConfigTemplateItem(coreType),
+            FullConfigTemplate = coreType == ECoreType.mihomo ? null : await AppManager.Instance.GetFullConfigTemplateItem(coreType),
             IsTunEnabled = config.TunModeItem.EnableTun,
             SimpleDnsItem = config.SimpleDNSItem,
             ProtectDomainList = [],
-            RawDnsItem = await AppManager.Instance.GetDNSItem(coreType),
+            RawDnsItem = coreType == ECoreType.mihomo ? null : await AppManager.Instance.GetDNSItem(coreType),
             RoutingItem = await ConfigHandler.GetDefaultRouting(config),
             IsWindows = Utils.IsWindows(),
             IsMacOS = Utils.IsMacOS(),

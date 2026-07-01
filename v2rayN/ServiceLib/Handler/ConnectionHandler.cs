@@ -66,7 +66,7 @@ public static class ConnectionHandler
     /// <summary>
     /// Measures response time by sending HTTP requests through proxy.
     /// </summary>
-    public static async Task<int> GetRealPingTime(IWebProxy? webProxy, int downloadTimeout)
+    public static async Task<int> GetRealPingTime(IWebProxy? webProxy, int downloadTimeout, int requestCount = 2)
     {
         var url = AppManager.Instance.Config.SpeedTestItem.SpeedPingTestUrl;
         var responseTime = -1;
@@ -80,14 +80,18 @@ public static class ConnectionHandler
                 UseProxy = webProxy != null
             });
 
+            requestCount = Math.Clamp(requestCount, 1, 3);
             List<int> oneTime = [];
-            for (var i = 0; i < 2; i++)
+            for (var i = 0; i < requestCount; i++)
             {
                 var timer = Stopwatch.StartNew();
                 await client.GetAsync(url, cts.Token).ConfigureAwait(false);
                 timer.Stop();
                 oneTime.Add((int)timer.Elapsed.TotalMilliseconds);
-                await Task.Delay(100, cts.Token);
+                if (i + 1 < requestCount)
+                {
+                    await Task.Delay(100, cts.Token);
+                }
             }
             responseTime = oneTime.Where(x => x > 0).OrderBy(x => x).FirstOrDefault();
         }

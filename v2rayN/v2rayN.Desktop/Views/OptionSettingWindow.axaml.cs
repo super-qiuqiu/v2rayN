@@ -45,9 +45,14 @@ public partial class OptionSettingWindow : WindowBase<OptionSettingViewModel>
         cmbCoreType6.ItemsSource = Global.CoreTypes;
         cmbCoreType7.ItemsSource = Global.CoreTypes;
         cmbCoreType9.ItemsSource = Global.CoreTypes;
+        cmbCoreType8.ItemsSource = Global.CoreTypes;
+        cmbCoreType11.ItemsSource = Global.CoreTypes;
+        cmbCoreType12.ItemsSource = Global.CoreTypes;
+        cmbCoreType14.ItemsSource = Global.CoreTypes;
 
         cmbMixedConcurrencyCount.ItemsSource = Enumerable.Range(2, 7).ToList();
         cmbSpeedTestTimeout.ItemsSource = Enumerable.Range(2, 5).Select(i => i * 5).ToList();
+        cmbSpeedPingTestCount.ItemsSource = Enumerable.Range(1, 3).ToList();
         cmbSpeedTestUrl.ItemsSource = Global.SpeedTestUrls;
         cmbSpeedPingTestUrl.ItemsSource = Global.SpeedPingTestUrls;
         cmbUdpTestTarget.ItemsSource = Global.UdpTestTargets;
@@ -104,6 +109,8 @@ public partial class OptionSettingWindow : WindowBase<OptionSettingViewModel>
             this.Bind(ViewModel, vm => vm.SpeedTestTimeout, v => v.cmbSpeedTestTimeout.SelectedValue).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SpeedTestUrl, v => v.cmbSpeedTestUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SpeedPingTestUrl, v => v.cmbSpeedPingTestUrl.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.SpeedPingTestCount, v => v.cmbSpeedPingTestCount.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.SpeedPingFetchIPInfo, v => v.togSpeedPingFetchIPInfo.IsChecked).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.UdpTestTarget, v => v.cmbUdpTestTarget.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.MixedConcurrencyCount, v => v.cmbMixedConcurrencyCount.SelectedValue).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SubConvertUrl, v => v.cmbSubConvertUrl.Text).DisposeWith(disposables);
@@ -137,6 +144,10 @@ public partial class OptionSettingWindow : WindowBase<OptionSettingViewModel>
             this.Bind(ViewModel, vm => vm.CoreType6, v => v.cmbCoreType6.SelectedValue).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.CoreType7, v => v.cmbCoreType7.SelectedValue).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.CoreType9, v => v.cmbCoreType9.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.CoreType8, v => v.cmbCoreType8.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.CoreType11, v => v.cmbCoreType11.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.CoreType12, v => v.cmbCoreType12.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.CoreType14, v => v.cmbCoreType14.SelectedValue).DisposeWith(disposables);
 
             this.BindCommand(ViewModel, vm => vm.SaveCmd, v => v.btnSave).DisposeWith(disposables);
         });

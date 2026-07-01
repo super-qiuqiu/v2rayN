@@ -129,6 +129,15 @@ public static class ConfigHandler
         {
             config.SpeedTestItem.SpeedPingTestUrl = Global.SpeedPingTestUrls.First();
         }
+        if (config.SpeedTestItem.SpeedPingTestCount < 1)
+        {
+            config.SpeedTestItem.SpeedPingTestCount = 2;
+        }
+        if (config.SpeedTestItem.SpeedPingTestCount > 3)
+        {
+            config.SpeedTestItem.SpeedPingTestCount = 3;
+        }
+        config.SpeedTestItem.SpeedPingFetchIPInfo ??= true;
         if (config.SpeedTestItem.MixedConcurrencyCount < 1)
         {
             config.SpeedTestItem.MixedConcurrencyCount = 5;
@@ -274,6 +283,7 @@ public static class ConfigHandler
             EConfigType.WireGuard => await AddWireguardServer(config, item),
             EConfigType.Anytls => await AddAnytlsServer(config, item),
             EConfigType.Naive => await AddNaiveServer(config, item),
+            EConfigType.Mieru => await AddMieruServer(config, item),
             _ => -1,
         };
         return ret;
@@ -923,6 +933,40 @@ public static class ConfigHandler
         {
             return -1;
         }
+        await AddServerCommon(config, profileItem, toFile);
+        return 0;
+    }
+
+    /// <summary>
+    /// Add or edit a Mieru server
+    /// Mieru proxies use sing-box extended core (enfein/mbox) or mihomo core
+    /// </summary>
+    public static async Task<int> AddMieruServer(Config config, ProfileItem profileItem, bool toFile = true)
+    {
+        profileItem.ConfigType = EConfigType.Mieru;
+
+        profileItem.Address = profileItem.Address.TrimEx();
+        profileItem.Username = profileItem.Username.TrimEx();
+        profileItem.Password = profileItem.Password.TrimEx();
+
+        if (profileItem.StreamSecurity.IsNullOrEmpty())
+        {
+            profileItem.StreamSecurity = Global.StreamSecurity;
+        }
+        if (profileItem.Password.IsNullOrEmpty())
+        {
+            return -1;
+        }
+
+        var protocolExtra = profileItem.GetProtocolExtra();
+        profileItem.SetProtocolExtra(protocolExtra with
+        {
+            MieruTransport = protocolExtra.MieruTransport.IsNullOrEmpty() ? "TCP" : protocolExtra.MieruTransport.TrimEx().ToUpperInvariant(),
+            MieruMultiplexing = protocolExtra.MieruMultiplexing.IsNullOrEmpty() ? "MULTIPLEXING_LOW" : protocolExtra.MieruMultiplexing.TrimEx(),
+            MieruPortRange = protocolExtra.MieruPortRange?.TrimEx(),
+            MieruTrafficPattern = protocolExtra.MieruTrafficPattern?.TrimEx(),
+        });
+
         await AddServerCommon(config, profileItem, toFile);
         return 0;
     }
@@ -1618,6 +1662,86 @@ public static class ConfigHandler
                 EConfigType.WireGuard => await AddWireguardServer(config, profileItem, false),
                 EConfigType.Anytls => await AddAnytlsServer(config, profileItem, false),
                 EConfigType.Naive => await AddNaiveServer(config, profileItem, false),
+                EConfigType.Mieru => await AddMieruServer(config, profileItem, false),
+                _ => -1,
+            };
+
+            if (addStatus == 0)
+            {
+                countServers++;
+                lstAdd.Add(profileItem);
+            }
+        }
+
+        if (lstAdd.Count > 0)
+        {
+            await SQLiteHelper.Instance.InsertAllAsync(lstAdd);
+        }
+
+        await SaveConfig(config);
+        return countServers;
+    }
+
+    /// <summary>
+    /// Extract individual proxy nodes from Clash YAML configuration.
+    /// This method parses the Clash proxies list and converts each proxy
+    /// into a standard ProfileItem (VMess, VLESS, Trojan, etc.) that can
+    /// be used directly with sing-box, Xray, or mihomo core.
+    /// </summary>
+    private static async Task<int> AddBatchServers4ClashProxies(Config config, string strData, string subid, bool isSub)
+    {
+        if (strData.IsNullOrEmpty())
+        {
+            return -1;
+        }
+
+        var subItem = await AppManager.Instance.GetSubItem(subid);
+        var subRemarks = subItem?.Remarks;
+        var preSocksPort = subItem?.PreSocksPort;
+
+        var lstProfiles = ClashFmt.ResolveFullArray(strData, subRemarks);
+        if (lstProfiles is not { Count: > 0 })
+        {
+            return -1;
+        }
+
+        var subFilter = string.Empty;
+        if (isSub && subid.IsNotEmpty())
+        {
+            subFilter = (await AppManager.Instance.GetSubItem(subid))?.Filter ?? "";
+        }
+
+        var countServers = 0;
+        List<ProfileItem> lstAdd = [];
+
+        foreach (var profileItem in lstProfiles)
+        {
+            // Apply subscription filter
+            if (isSub && subid.IsNotEmpty() && subFilter.IsNotEmpty())
+            {
+                if (!Regex.IsMatch(profileItem.Remarks, subFilter))
+                {
+                    continue;
+                }
+            }
+
+            profileItem.Subid = subid;
+            profileItem.IsSub = isSub;
+            profileItem.PreSocksPort = preSocksPort;
+
+            var addStatus = profileItem.ConfigType switch
+            {
+                EConfigType.VMess => await AddVMessServer(config, profileItem, false),
+                EConfigType.Shadowsocks => await AddShadowsocksServer(config, profileItem, false),
+                EConfigType.SOCKS => await AddSocksServer(config, profileItem, false),
+                EConfigType.Trojan => await AddTrojanServer(config, profileItem, false),
+                EConfigType.VLESS => await AddVlessServer(config, profileItem, false),
+                EConfigType.Hysteria2 => await AddHysteria2Server(config, profileItem, false),
+                EConfigType.TUIC => await AddTuicServer(config, profileItem, false),
+                EConfigType.WireGuard => await AddWireguardServer(config, profileItem, false),
+                EConfigType.Anytls => await AddAnytlsServer(config, profileItem, false),
+                EConfigType.Naive => await AddNaiveServer(config, profileItem, false),
+                EConfigType.Mieru => await AddMieruServer(config, profileItem, false),
                 _ => -1,
             };
 
@@ -1815,6 +1939,7 @@ public static class ConfigHandler
                     EConfigType.WireGuard => await AddWireguardServer(config, profileItem, false),
                     EConfigType.Anytls => await AddAnytlsServer(config, profileItem, false),
                     EConfigType.Naive => await AddNaiveServer(config, profileItem, false),
+                    EConfigType.Mieru => await AddMieruServer(config, profileItem, false),
                     EConfigType.PolicyGroup or EConfigType.ProxyChain => await AddServerCommon(config, profileItem, false),
                     _ => -1,
                 };
@@ -1908,6 +2033,12 @@ public static class ConfigHandler
             {
                 counter = innerUriCount;
             }
+        }
+
+        //maybe clash config with extractable proxies
+        if (counter < 1)
+        {
+            counter = await AddBatchServers4ClashProxies(config, strData, subid, isSub);
         }
 
         //maybe other sub

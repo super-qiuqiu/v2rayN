@@ -951,6 +951,35 @@
                             Style="{StaticResource DefComboBox}" />
 
                         <TextBlock
+                            Grid.Row="21"
+                            Grid.Column="0"
+                            Margin="{StaticResource Margin8}"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource ToolbarTextBlock}"
+                            Text="{x:Static resx:ResUI.TbSettingsSpeedPingTestCount}" />
+                        <ComboBox
+                            x:Name="cmbSpeedPingTestCount"
+                            Grid.Row="21"
+                            Grid.Column="1"
+                            Width="200"
+                            Margin="{StaticResource Margin8}"
+                            Style="{StaticResource DefComboBox}" />
+                        <StackPanel
+                            Grid.Row="21"
+                            Grid.Column="2"
+                            Margin="{StaticResource Margin4}"
+                            Orientation="Horizontal">
+                            <ToggleButton
+                                x:Name="togSpeedPingFetchIPInfo"
+                                HorizontalAlignment="Left" />
+                            <TextBlock
+                                Margin="{StaticResource Margin4}"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource ToolbarTextBlock}"
+                                Text="{x:Static resx:ResUI.TbSettingsSpeedPingFetchIPInfo}" />
+                        </StackPanel>
+
+                        <TextBlock
                             Grid.Row="20"
                             Grid.Column="0"
                             Margin="{StaticResource Margin8}"

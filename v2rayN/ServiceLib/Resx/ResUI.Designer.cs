@@ -4411,6 +4411,24 @@ namespace ServiceLib.Resx {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Real ping request count.
+        /// </summary>
+        public static string TbSettingsSpeedPingTestCount {
+            get {
+                return ResourceManager.GetString("TbSettingsSpeedPingTestCount", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Fetch IP info after real ping.
+        /// </summary>
+        public static string TbSettingsSpeedPingFetchIPInfo {
+            get {
+                return ResourceManager.GetString("TbSettingsSpeedPingFetchIPInfo", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 The number of concurrent tests during multi-test 的本地化字符串。
         /// </summary>
         public static string TbSettingsMixedConcurrencyCount {
